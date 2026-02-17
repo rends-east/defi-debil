@@ -1,7 +1,64 @@
+# Python
 __pycache__/
 *.pyc
-.vscode
-.env
-.cursor
-*.csv
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+
+# Node/React
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+frontend/build/
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+
+# IDE
+.vscode/
+.cursor/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
 .ds_store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+
+# Data (keep structure, ignore large files)
+*.csv
+data/*.csv
+# Misc
+*.log
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# testing
+/coverage
+
+# production
+/build
+
+# misc
+.DS_Store
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, Wallet, Sparkles, Play, X, Lock, Unlock } from 'lucide-react';
+import { Plus, Wallet, Sparkles, Play, X, Lock, Unlock, Loader2 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -9,6 +9,8 @@ import { useAuth } from '../../context/AuthContext';
 import { LendingModule } from '../backtest/LendingModule';
 import { PerpsModule } from '../backtest/PerpsModule';
 import { ConcentratedLiquidityModule } from '../backtest/ConcentratedLiquidityModule';
+import { BacktestResults } from '../backtest/BacktestResults';
+import { runLendingBacktest, runPerpBacktest, runClmmBacktest, runBatchBacktest } from '../../lib/api';
 
 // Compute remaining balance for one asset after a list of strategies.
 // Handles both allocation-% strategies (lending/perps) and absolute-amount CL strategies.
@@ -338,6 +340,7 @@ const StrategyCard = ({
   if (strategy.type === 'perps') {
     moduleProps.investedAmt = investedAmt ?? 0;
     moduleProps.investedAsset = investedAsset ?? 'USDC';
+    strategy.asset = 'USDC'
   }
   if (strategy.type === 'cl') {
     moduleProps.availableBNB = availableBNB ?? 0;
@@ -440,6 +443,98 @@ export const Workspace = ({
   onRunBacktest,
 }) => {
   const { isAuthenticated } = useAuth();
+  const [results, setResults] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const handleRunBacktest = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // 1. Calculate effective balances and invested amounts for all strategies
+      // Reuse the same logic as render
+      
+      // Aggregate borrow amounts
+      const borrowedByAsset = strategies
+        .filter(s => s.type === 'lending' && s.config?.borrowAsset && s.config.borrowAsset !== 'none')
+        .reduce((acc, s) => {
+          const asset = s.config.borrowAsset;
+          const amount = parseFloat(s.config.borrowAmount) || 0;
+          acc[asset] = (acc[asset] || 0) + amount;
+          return acc;
+        }, {});
+
+      // Effective balance per asset = base portfolio + borrowed
+      const effectiveBalances = ['BNB', 'USDC'].reduce((acc, asset) => {
+        const base = parseFloat(portfolio.find(a => a.asset === asset)?.balance) || 0;
+        acc[asset] = base + (borrowedByAsset[asset] || 0);
+        return acc;
+      }, {});
+
+      // 2. Prepare request items
+      const requestItems = strategies.map((strategy, index) => {
+        const prior = strategies.slice(0, index);
+        strategy.asset = 'USDC'; // TMP fix
+        const strategyEffectiveBalance = seqRemaining(effectiveBalances[strategy.asset] ?? 0, strategy.asset, prior);
+        const strategyInvestedAmt = strategyEffectiveBalance * (strategy.allocation / 100);
+
+        console.log(effectiveBalances, strategy.allocation, strategy.asset);
+        if (strategy.type === 'lending') {
+          return {
+            type: 'lending',
+            params: {
+              supply_amount: strategyInvestedAmt,
+              borrow_amount: parseFloat(strategy.config.borrowAmount) || 0,
+              is_bnb_supply: strategy.asset === 'BNB'
+            }
+          };
+        } else if (strategy.type === 'perps') {
+          return {
+            type: 'perp',
+            params: {
+              initial_collateral: strategyInvestedAmt,
+              leverage: parseFloat(strategy.config.leverage) || 1,
+              is_long: strategy.config.direction === 'long'
+            }
+          };
+        } else if (strategy.type === 'cl') {
+          return {
+            type: 'clmm',
+            params: {
+              initial_token0: parseFloat(strategy.config.amountBNB) || 0,
+              initial_token1: parseFloat(strategy.config.amountUSDC) || 0,
+              min_price: parseFloat(strategy.config.minPrice) || 0,
+              max_price: parseFloat(strategy.config.maxPrice) || 0
+            }
+          };
+        }
+        return null;
+      }).filter(Boolean);
+
+      // 3. Send request
+      let res;
+      if (requestItems.length === 1) {
+        const item = requestItems[0];
+        if (item.type === 'lending') res = await runLendingBacktest(item.params);
+        else if (item.type === 'perp') res = await runPerpBacktest(item.params);
+        else if (item.type === 'clmm') res = await runClmmBacktest(item.params);
+      } else if (requestItems.length > 1) {
+        const batchRes = await runBatchBacktest(requestItems);
+        res = batchRes.results; // Extract results array
+      }
+
+      setResults(res);
+    } catch (err) {
+      console.error(err);
+      setError(err.message || "Failed to run backtest");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (results) {
+    return <BacktestResults results={results} onBack={() => setResults(null)} />;
+  }
 
   if (!isAuthenticated) {
     return (
@@ -685,17 +780,31 @@ export const Workspace = ({
 
           {/* Run Backtest */}
           {strategies.length > 0 && (
-            <div className="max-w-2xl pb-6">
+            <div className="max-w-2xl pb-6 space-y-2">
               <Button
                 variant="gradient"
                 size="lg"
-                className="w-full"
-                onClick={onRunBacktest}
-                disabled={portfolio.length === 0}
+                className="w-full relative"
+                onClick={handleRunBacktest}
+                disabled={portfolio.length === 0 || loading}
               >
-                <Play className="mr-2 h-5 w-5" />
-                Run Backtest
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    Simulating Strategy...
+                  </>
+                ) : (
+                  <>
+                    <Play className="mr-2 h-5 w-5" />
+                    Run Backtest
+                  </>
+                )}
               </Button>
+              {error && (
+                <p className="text-sm text-center text-red-500 bg-red-50 p-2 rounded-lg border border-red-100">
+                  {error}
+                </p>
+              )}
               {portfolio.length === 0 && (
                 <p className="text-xs text-center text-muted-foreground mt-2">
                   Add assets to your portfolio before running

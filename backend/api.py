@@ -16,8 +16,18 @@ sys.path.append(str(Path(__file__).parent.parent))
 from backend.lending_backtest import simulate_lending
 from backend.perp_backtest import simulate_perp
 from backend.clmm_backtest import simulate_clmm
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="DeFi Debil Backtest API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 # --- Models ---
 

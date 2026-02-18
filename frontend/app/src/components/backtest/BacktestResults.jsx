@@ -164,35 +164,36 @@ export const BacktestResults = ({ results, onBack }) => {
   }, [data]);
 
   return (
-    <div className="min-h-screen bg-gray-50/50 pb-20">
+    <div className="flex flex-col h-full bg-gray-50/50 overflow-hidden">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-10 backdrop-blur-md bg-white/80">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+      <div className="bg-white border-b border-gray-200 shrink-0 z-10 backdrop-blur-md bg-white/80">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 py-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={onBack} className="hover:bg-gray-100 rounded-full">
+            <Button variant="ghost" size="icon" onClick={onBack} className="hover:bg-gray-100 rounded-full shrink-0">
               <ArrowLeft className="w-5 h-5 text-gray-600" />
             </Button>
             <div>
-              <h1 className="text-xl font-bold text-gray-900">Backtest Results</h1>
+              <h1 className="text-lg md:text-xl font-bold text-gray-900">Backtest Results</h1>
               <p className="text-sm text-gray-500">
                 {data.length} Strateg{data.length > 1 ? 'ies' : 'y'} Simulated
               </p>
             </div>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={onBack}>
-              Adjust Configuration
+          <div className="flex gap-2 w-full md:w-auto">
+            <Button variant="outline" onClick={onBack} className="flex-1 md:flex-none">
+              Adjust Config
             </Button>
-            <Button className="bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/20 border-0">
-              Deploy Strategy
+            <Button className="flex-1 md:flex-none bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/20 border-0">
+              Deploy
             </Button>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-8 space-y-8">
-        {/* KPI Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6 md:space-y-8 pb-20">
+          {/* KPI Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
             <MetricCard 
               title="Total PnL" 
@@ -238,17 +239,17 @@ export const BacktestResults = ({ results, onBack }) => {
           transition={{ delay: 0.5 }}
           className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden"
         >
-          <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+          <div className="p-4 md:p-6 border-b border-gray-100 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div>
               <h2 className="text-lg font-bold text-gray-900">Equity Curve</h2>
               <p className="text-sm text-gray-500">Portfolio value performance over time</p>
             </div>
             
             {/* Tabs for switching views */}
-            <div className="flex bg-gray-100/80 p-1 rounded-lg">
+            <div className="flex bg-gray-100/80 p-1 rounded-lg w-full md:w-auto overflow-x-auto">
               <button
                 onClick={() => setSelectedTab('overview')}
-                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${selectedTab === 'overview' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap ${selectedTab === 'overview' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
               >
                 Overview
               </button>
@@ -256,7 +257,7 @@ export const BacktestResults = ({ results, onBack }) => {
                 <button
                   key={idx}
                   onClick={() => setSelectedTab(idx)}
-                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${selectedTab === idx ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap ${selectedTab === idx ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
                 >
                   Strategy {idx + 1}
                 </button>
@@ -264,7 +265,7 @@ export const BacktestResults = ({ results, onBack }) => {
             </div>
           </div>
 
-          <div className="h-[400px] w-full p-6">
+          <div className="h-[300px] md:h-[400px] w-full p-4 md:p-6">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <defs>
@@ -343,9 +344,9 @@ export const BacktestResults = ({ results, onBack }) => {
         </motion.div>
 
         {/* Individual Strategy Breakdown */}
-        <div className="space-y-4">
+        <div className="space-y-4 pb-12">
             <h2 className="text-lg font-bold text-gray-900 px-1">Strategy Breakdown</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                 {data.map((res, idx) => (
                     <motion.div 
                         key={idx}
@@ -386,5 +387,6 @@ export const BacktestResults = ({ results, onBack }) => {
         </div>
       </div>
     </div>
+  </div>
   );
 };

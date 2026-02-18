@@ -254,7 +254,7 @@ const RemainingPanel = ({ portfolio, strategies, borrowedByAsset, strategyIndex 
       : `After strategies 1–${strategyIndex + 1}`;
 
   return (
-    <div className="w-44 shrink-0 sticky top-8 self-start">
+    <div className="w-full md:w-44 shrink-0 static md:sticky md:top-8 self-start">
       <Card className="shadow-sm border border-gray-200">
         <CardContent className="p-4 space-y-4">
           <div>
@@ -603,12 +603,12 @@ export const Workspace = ({
   }, {});
 
   return (
-    <div className="flex-1 h-screen bg-gray-50 overflow-auto">
-      <div className="max-w-4xl mx-auto px-6 py-8">
+    <div className="flex-1 h-full bg-gray-50 overflow-auto">
+      <div className="max-w-4xl mx-auto px-4 md:px-6 py-6 md:py-8">
 
         {/* Portfolio Balance — same flex layout as strategy rows so widths align */}
-        <div className="flex gap-3 items-start mb-5">
-        <div className="flex-1 min-w-0">
+        <div className="flex flex-col md:flex-row gap-3 items-start mb-5">
+        <div className="flex-1 min-w-0 w-full">
         <Card className="shadow-md border border-gray-200">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
@@ -682,10 +682,10 @@ export const Workspace = ({
           </CardContent>
         </Card>
         </div>{/* close flex-1 */}
-        <div className="w-44 shrink-0" />{/* spacer matching RemainingPanel */}
+        <div className="w-44 shrink-0 hidden md:block" />{/* spacer matching RemainingPanel */}
 
         {/* Timeline origin — aligns with strategy timeline columns */}
-        <div className="w-14 shrink-0 self-stretch relative">
+        <div className="w-14 shrink-0 self-stretch relative hidden md:block">
           {/* Date label */}
           <span className="absolute right-4 top-1 text-[9px] font-bold text-gray-400 whitespace-nowrap leading-none">
             01.01.2024
@@ -725,8 +725,8 @@ export const Workspace = ({
             const isLast = index === strategies.length - 1;
 
             return (
-              <div key={strategy.id} className="flex gap-3 items-start">
-                <div className="flex-1 min-w-0">
+              <div key={strategy.id} className="flex flex-col md:flex-row gap-3 items-start">
+                <div className="flex-1 min-w-0 w-full">
                   <StrategyCard
                     strategy={strategy}
                     effectiveBalance={strategyEffectiveBalance}
@@ -741,15 +741,17 @@ export const Workspace = ({
                     onToggleLock={() => onToggleLock(strategy.id)}
                   />
                 </div>
-                <RemainingPanel
-                  portfolio={portfolio}
-                  strategies={strategiesUpTo}
-                  borrowedByAsset={borrowedUpTo}
-                  strategyIndex={index}
-                />
+                <div className="w-full md:w-44 shrink-0">
+                  <RemainingPanel
+                    portfolio={portfolio}
+                    strategies={strategiesUpTo}
+                    borrowedByAsset={borrowedUpTo}
+                    strategyIndex={index}
+                  />
+                </div>
 
                 {/* Timeline column */}
-                <div className="w-14 shrink-0 self-stretch relative">
+                <div className="w-14 shrink-0 self-stretch relative hidden md:block">
                   {/* Large ordinal number */}
                   <span className="absolute left-0 right-5 top-1 text-right text-4xl font-black text-gray-200 leading-none select-none">
                     {index + 1}

@@ -33,6 +33,7 @@ Thumbs.db
 # Environment
 .env
 .env.local
+.npmrc
 
 # Data (keep structure, ignore large files)
 *.csv

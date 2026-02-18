@@ -23,7 +23,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Literal, TypedDict
+from typing import Dict, List, Literal, Optional, TypedDict
 import csv
 
 
@@ -47,7 +47,7 @@ class StepState(TypedDict):
     All amounts are notionals in the underlying asset units (e.g. BNB, USDC).
     Rates are normalized per-block values (e.g. 2.5e-9).
     """
-
+    timestamp: int
     block: int
 
     supply_bnb: float
@@ -63,6 +63,7 @@ class StepState(TypedDict):
 
 @dataclass
 class MarketPoint:
+    timestamp: int
     block: int
     supply_rate_mantissa: int
     cash: float
@@ -90,6 +91,7 @@ def _read_market_history(csv_path: Path) -> List[MarketPoint]:
         for row in reader:
             # Defensive parsing with minimal casting.
             block = int(row["block"])
+            timestamp = int(row["timestamp"])
             supply_rate_mantissa = int(row["supply_rate_per_block"])
             cash = float(row["cash"])
             borrows = float(row["borrows"])
@@ -98,6 +100,7 @@ def _read_market_history(csv_path: Path) -> List[MarketPoint]:
 
             points.append(
                 MarketPoint(
+                    timestamp=timestamp,
                     block=block,
                     supply_rate_mantissa=supply_rate_mantissa,
                     cash=cash,
@@ -174,6 +177,7 @@ def simulate_lending(
     supply_amount: float,
     borrow_amount: float,
     is_bnb: bool,
+    start_timestamp: Optional[int] = None,
 ) -> List[StepState]:
     """
     Simulate a simple supply/borrow position across historical Venus data.
@@ -184,6 +188,11 @@ def simulate_lending(
         is_bnb:
             - True:  supply in BNB,  borrow in USDC;
             - False: supply in USDC, borrow in BNB.
+        start_timestamp:
+            Unix timestamp (seconds) at which to start the backtest.
+            The function finds the closest snapshot by timestamp in the
+            historical CSV data and starts from that row. If None (default),
+            the simulation starts from the first available snapshot.
 
     Returns:
         List[StepState] with length equal to the minimum of the two
@@ -206,6 +215,20 @@ def simulate_lending(
     # Trim both histories to the same length for deterministic indexing.
     bnb_history = bnb_history[:n]
     usdc_history = usdc_history[:n]
+
+    # If a start timestamp is provided, find the closest snapshot (by timestamp)
+    # in the aligned histories and start from that index.
+    if start_timestamp is not None:
+        # Use BNB timestamps as the reference; histories are aligned in time.
+        closest_idx = min(
+            range(n),
+            key=lambda i: abs(bnb_history[i].timestamp - start_timestamp),
+        )
+        bnb_history = bnb_history[closest_idx:]
+        usdc_history = usdc_history[closest_idx:]
+        n = len(bnb_history)
+        if n == 0:
+            return []
 
     # Initial positions at the first snapshot.
     if is_bnb:
@@ -274,6 +297,7 @@ def simulate_lending(
 
         # Record snapshot for this block.
         step: StepState = {
+            "timestamp": bnb_point.timestamp,
             "block": current_block,
             "supply_bnb": supply_bnb,
             "borrow_bnb": borrow_bnb,

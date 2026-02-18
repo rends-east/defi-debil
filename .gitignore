@@ -37,6 +37,11 @@ Thumbs.db
 # Data (keep structure, ignore large files)
 *.csv
 data/*.csv
+data/*.py
+data/clmm/*.pkl
+data/clmm/*.py
+data/clmm/*.json
+/tmp/*
 # Misc
 *.log
 

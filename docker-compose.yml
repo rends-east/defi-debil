@@ -44,9 +44,10 @@ services:
     container_name: backend
     restart: always
     environment:
-      - MONGO_URL=mongodb://admin:secure_password@mongo:27017
+      - MONGO_URL=mongodb://admin:secure_password@mongo:27017?authSource=admin
       - DB_NAME=defi_debil
       - JWT_SECRET=super_secret_jwt_key_change_me
+      - PYTHONUNBUFFERED=1
     depends_on:
       - mongo
     networks:

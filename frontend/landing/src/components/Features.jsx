@@ -43,18 +43,19 @@ const Features = () => {
       gradient: 'from-orange-500 to-red-500',
     },
     {
-      title: 'BNB Chain Focused',
-      description: 'Optimized specifically for BNB ecosystem protocols. Deep integration with Venus, PancakeSwap, and more.',
+      title: 'AI Agent Ready 🦞',
+      description: 'First-class support for OpenClaw and x402. Let your agents backtest independently.',
+      link: '/llms.txt',
       icon: (
         <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
         </svg>
       ),
-      gradient: 'from-yellow-500 to-orange-500',
+      gradient: 'from-pink-500 to-rose-500',
     },
     {
       title: 'Intuitive Interface',
-      description: 'Clear visualizations and streamlined workflow. Get insights fast without complexity.',
+      description: 'Clear visualizations for humans, JSON API for robots. Everyone is happy.',
       icon: (
         <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -76,7 +77,7 @@ const Features = () => {
             </span>
           </h2>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Comprehensive tools and data to backtest DeFi strategies with confidence
+            Comprehensive tools for manual and automated backtesting with OpenClaw 🦞 support
           </p>
         </div>
 
@@ -85,7 +86,7 @@ const Features = () => {
           {features.map((feature, index) => (
             <div
               key={index}
-              className="group bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transform hover:-translate-y-2 transition-all duration-300 border border-gray-100"
+              className="group bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transform hover:-translate-y-2 transition-all duration-300 border border-gray-100 relative"
             >
               {/* Icon */}
               <div
@@ -103,12 +104,16 @@ const Features = () => {
               </p>
 
               {/* Hover indicator */}
-              <div className="mt-6 flex items-center text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              <a 
+                href={feature.link || '#'}
+                target={feature.link ? "_blank" : "_self"}
+                className="mt-6 flex items-center text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300 cursor-pointer"
+              >
                 <span className="font-semibold text-sm">Learn more</span>
                 <svg className="w-4 h-4 ml-2 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
-              </div>
+              </a>
             </div>
           ))}
         </div>
@@ -119,10 +124,7 @@ const Features = () => {
             Ready to see it in action?
           </p>
           <button
-            onClick={() => {
-              const element = document.getElementById('demo');
-              if (element) element.scrollIntoView({ behavior: 'smooth' });
-            }}
+            onClick={() => window.open('https://app.debil.capital', '_blank')}
             className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-full font-semibold text-lg hover:shadow-lg transform hover:scale-105 transition-all duration-300"
           >
             Try the Demo

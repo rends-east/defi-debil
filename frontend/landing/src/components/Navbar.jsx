@@ -9,7 +9,7 @@ const Navbar = () => {
       setIsScrolled(window.scrollY > 20);
 
       // Update active section based on scroll position
-      const sections = ['home', 'features', 'how-it-works', 'use-cases', 'demo'];
+      const sections = ['home', 'features', 'how-it-works', 'use-cases', 'pricing', 'demo'];
       const current = sections.find(section => {
         const element = document.getElementById(section);
         if (element) {
@@ -37,6 +37,7 @@ const Navbar = () => {
     { id: 'features', label: 'Features' },
     { id: 'how-it-works', label: 'How It Works' },
     { id: 'use-cases', label: 'Use Cases' },
+    { id: 'pricing', label: 'Pricing' },
     { id: 'demo', label: 'Demo' },
   ];
 
@@ -70,7 +71,13 @@ const Navbar = () => {
             {navLinks.map((link) => (
               <button
                 key={link.id}
-                onClick={() => scrollToSection(link.id)}
+                onClick={() => {
+                    if (link.id === 'demo') {
+                        window.open('https://app.debil.capital', '_blank');
+                    } else {
+                        scrollToSection(link.id);
+                    }
+                }}
                 className={`transition-colors font-medium ${
                   activeSection === link.id
                     ? isScrolled
@@ -88,7 +95,7 @@ const Navbar = () => {
 
           {/* CTA Button */}
           <button
-            onClick={() => scrollToSection('demo')}
+            onClick={() => window.open('https://app.debil.capital', '_blank')}
             className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-2 rounded-full font-semibold hover:shadow-lg transform hover:scale-105 transition-all duration-300"
           >
             Try Demo

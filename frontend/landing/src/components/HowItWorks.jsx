@@ -5,16 +5,24 @@ const HowItWorks = () => {
     {
       number: '01',
       title: 'Select Strategy',
-      description: 'Choose from lending, yield farming, liquidity provision, or arbitrage strategies. Pick your protocol and time range.',
-      features: ['Venus Lending', 'PancakeSwap LP', 'Yield Farming', 'Arbitrage'],
+      description: (
+        <>
+          Choose from lending, yield farming, or have your{' '}
+          <a href="/llms.txt" target="_blank" className="text-blue-600 hover:underline">
+            OpenClaw 🦞
+          </a>{' '}
+          agent auto-select. Pick your protocol and time range.
+        </>
+      ),
+      features: ['Venus Lending', 'PancakeSwap LP', 'OpenClaw Compatible', 'Aster Perps'],
       mockup: (
         <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl p-6 h-48 flex flex-col justify-center">
           <div className="space-y-3">
-            {['Lending Strategy', 'Yield Farming', 'LP Strategy'].map((item, i) => (
+            {['Lending Strategy', 'Yield Farming', 'AI Agent (x402)'].map((item, i) => (
               <div
                 key={i}
                 className={`flex items-center justify-between p-3 rounded-lg ${
-                  i === 0 ? 'bg-blue-600 text-white' : 'bg-white text-gray-700'
+                  i === 2 ? 'bg-purple-600 text-white' : 'bg-white text-gray-700'
                 } transition-all`}
               >
                 <span className="font-medium text-sm">{item}</span>
@@ -30,8 +38,8 @@ const HowItWorks = () => {
     {
       number: '02',
       title: 'Configure Parameters',
-      description: 'Set allocation amounts, time ranges, and risk parameters. Customize your backtest to match your investment thesis.',
-      features: ['Amount & Duration', 'Risk Limits', 'Entry/Exit Rules', 'Rebalancing'],
+      description: 'Set allocation amounts and risk parameters manually or via x402 config files.',
+      features: ['Amount & Duration', 'Risk Limits', 'x402 Config', 'Rebalancing'],
       mockup: (
         <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-6 h-48 flex flex-col justify-between">
           <div className="space-y-2">
@@ -45,11 +53,11 @@ const HowItWorks = () => {
           </div>
           <div className="space-y-2">
             <div className="flex justify-between items-center">
-              <span className="text-xs text-gray-600">Time Range</span>
-              <span className="text-sm font-semibold text-purple-600">90 Days</span>
+              <span className="text-xs text-gray-600">Agent Mode</span>
+              <span className="text-sm font-semibold text-purple-600">Active 🦞</span>
             </div>
             <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-              <div className="w-2/3 h-full bg-gradient-to-r from-blue-600 to-purple-600"></div>
+              <div className="w-full h-full bg-gradient-to-r from-blue-600 to-purple-600 animate-pulse"></div>
             </div>
           </div>
           <div className="flex gap-2 mt-2">
@@ -68,8 +76,8 @@ const HowItWorks = () => {
     {
       number: '03',
       title: 'Analyze Results',
-      description: 'Review comprehensive performance metrics, risk analysis, and insights. Make data-driven decisions with confidence.',
-      features: ['P&L Analysis', 'Risk Metrics', 'Drawdown Charts', 'Strategy Comparison'],
+      description: 'Review performance metrics. Agents receive JSON results via x402 callback.',
+      features: ['P&L Analysis', 'Risk Metrics', 'JSON Export', 'Strategy Comparison'],
       mockup: (
         <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-6 h-48 flex flex-col justify-between">
           <div className="grid grid-cols-3 gap-2 mb-3">
@@ -111,7 +119,7 @@ const HowItWorks = () => {
             How It Works
           </h2>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Three simple steps to backtest your DeFi strategy and gain actionable insights
+            Three simple steps for humans or AI agents to backtest strategies
           </p>
         </div>
 
@@ -171,13 +179,10 @@ const HowItWorks = () => {
         {/* Bottom CTA */}
         <div className="text-center mt-8"> 
           <p className="text-gray-600 mb-6">
-            Simple, powerful, and built for DeFi traders
+            Simple, powerful, and built for DeFi traders & Agents
           </p>
           <button
-            onClick={() => {
-              const element = document.getElementById('demo');
-              if (element) element.scrollIntoView({ behavior: 'smooth' });
-            }}
+            onClick={() => window.open('https://app.debil.capital', '_blank')}
             className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-full font-semibold text-lg hover:shadow-lg transform hover:scale-105 transition-all duration-300"
           >
             Start Backtesting Now

@@ -1,11 +1,8 @@
 import React from 'react';
 
 const Hero = () => {
-  const scrollToDemo = () => {
-    const element = document.getElementById('demo');
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
-    }
+  const openApp = () => {
+    window.open('https://app.debil.capital', '_blank');
   };
 
   return (
@@ -26,7 +23,10 @@ const Hero = () => {
           {/* Badge */}
           <span className="inline-flex items-center px-4 py-2 rounded-full bg-white bg-opacity-20 text-white text-sm font-medium backdrop-blur-sm mb-8">
             <span className="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse"></span>
-            Built for BNB Chain
+            Built for BNB Chain &{' '}
+            <a href="/llms.txt" target="_blank" className="hover:underline hover:text-green-300 ml-1 transition-colors">
+              AI Agents 🦞
+            </a>
           </span>
         </div>
 
@@ -35,20 +35,28 @@ const Hero = () => {
           Backtest DeFi Strategies
           <br />
           <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-200 to-purple-200">
-            on BNB Chain with Confidence
+            for Humans &{' '}
+            <a href="/skills/defi-debil-backtest/SKILL.md" target="_blank" className="hover:text-white underline decoration-dotted transition-colors">
+              AI Agents
+            </a>
           </span>
         </h1>
 
         {/* Subheadline */}
         <p className="text-xl md:text-2xl text-blue-100 mb-12 max-w-3xl mx-auto leading-relaxed">
-          Unified analytics platform with aggregated historical data from multiple DeFi protocols. 
-          Test yield farming, lending, and LP strategies before deploying capital.
+          Unified analytics platform with aggregated historical data. 
+          Perfect for manual backtesting and autonomous agents like{' '}
+          <a href="/llms.txt" target="_blank" className="font-bold hover:text-white underline decoration-dotted transition-colors">
+            OpenClaw 🦞
+          </a>.
+          <br />
+          Full support for <strong>x402</strong> standard.
         </p>
 
         {/* CTAs */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
           <button
-            onClick={scrollToDemo}
+            onClick={openApp}
             className="group relative px-8 py-4 bg-white text-purple-600 rounded-full font-bold text-lg shadow-2xl hover:shadow-3xl transform hover:scale-105 transition-all duration-300"
           >
             Try Demo
@@ -60,21 +68,6 @@ const Hero = () => {
             >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
             </svg>
-          </button>
-
-          <button
-            className="group px-8 py-4 bg-transparent border-2 border-white text-white rounded-full font-semibold text-lg hover:bg-white hover:text-purple-600 transition-all duration-300"
-          >
-            <svg
-              className="inline-block mr-2 w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            Watch 2-Min Overview
           </button>
         </div>
 

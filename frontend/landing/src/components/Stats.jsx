@@ -3,8 +3,8 @@ import React from 'react';
 const Stats = () => {
   const stats = [
     {
-      number: '15+',
-      label: 'DeFi Protocols',
+      number: 'Biggest',
+      label: 'DeFi protocols',
       description: 'Supported on BNB Chain',
       icon: (
         <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -25,7 +25,7 @@ const Stats = () => {
     {
       number: '1,000+',
       label: 'Backtests Run',
-      description: 'By our beta community',
+      description: 'By our ai agents fleet',
       icon: (
         <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
@@ -34,7 +34,14 @@ const Stats = () => {
     },
     {
       number: '50+',
-      label: 'Beta Users',
+      label: (
+        <>
+          Beta users (2 real humans and{' '}
+          <a href="/llms.txt" target="_blank" className="underline hover:text-blue-200">
+            50 AI Agents
+          </a>)
+        </>
+      ),
       description: 'Testing the platform',
       icon: (
         <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -97,7 +104,7 @@ const Stats = () => {
         <div className="text-center mt-16">
           <div className="inline-flex items-center bg-white bg-opacity-10 backdrop-blur-lg rounded-full px-6 py-3 border border-white border-opacity-20">
             <span className="w-2 h-2 bg-green-400 rounded-full mr-3 animate-pulse"></span>
-            <span className="text-white font-medium">Live data updated daily</span>
+            <span className="text-white font-medium">Live data updated sometimes</span>
           </div>
         </div>
       </div>

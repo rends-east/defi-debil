@@ -8,6 +8,8 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import math
 import sys
+import csv
+import bisect
 from pathlib import Path
 import secrets
 
@@ -22,6 +24,63 @@ from backend.auth import create_access_token, verify_signature, get_current_user
 import secrets
 from datetime import datetime, timezone
 from typing import Optional
+
+# --- Price Feed Helper ---
+
+BNB_PRICES_CACHE = None
+BNB_TIMESTAMPS_CACHE = None
+
+def get_bnb_price(timestamp_ms: int) -> float:
+    global BNB_PRICES_CACHE, BNB_TIMESTAMPS_CACHE
+    
+    if BNB_PRICES_CACHE is None:
+        # Load data
+        # Try relative path first, then absolute
+        csv_path = Path("data/perps/bnb-klines.csv")
+        if not csv_path.exists():
+            csv_path = Path("/Users/malol/evm/defi-debil/data/perps/bnb-klines.csv")
+            
+        if not csv_path.exists():
+            print(f"Warning: {csv_path} not found. Using default price 300.0.")
+            return 300.0
+
+        timestamps = []
+        prices = []
+        try:
+            with open(csv_path, 'r') as f:
+                reader = csv.reader(f)
+                next(reader) # skip header
+                for row in reader:
+                    if row:
+                        timestamps.append(int(row[0])) # ms
+                        prices.append(float(row[4])) # close price
+            
+            BNB_TIMESTAMPS_CACHE = timestamps
+            BNB_PRICES_CACHE = prices
+            print(f"Loaded {len(BNB_PRICES_CACHE)} BNB price points")
+        except Exception as e:
+            print(f"Error loading BNB prices: {e}")
+            return 300.0
+
+    if not BNB_TIMESTAMPS_CACHE:
+        return 300.0
+
+    # Binary search for closest timestamp
+    idx = bisect.bisect_left(BNB_TIMESTAMPS_CACHE, timestamp_ms)
+    
+    if idx == 0:
+        return BNB_PRICES_CACHE[0]
+    if idx >= len(BNB_TIMESTAMPS_CACHE):
+        return BNB_PRICES_CACHE[-1]
+    
+    # Check which is closer
+    before_ts = BNB_TIMESTAMPS_CACHE[idx-1]
+    after_ts = BNB_TIMESTAMPS_CACHE[idx]
+    
+    if abs(after_ts - timestamp_ms) < abs(timestamp_ms - before_ts):
+        return BNB_PRICES_CACHE[idx]
+    else:
+        return BNB_PRICES_CACHE[idx-1]
 
 # x402 imports
 from fastapi import HTTPException
@@ -82,7 +141,8 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "https://debil.capital",
-        "https://www.debil.capital"
+        "https://www.debil.capital",
+        "https://app.debil.capital",
     ], 
     allow_credentials=True,
     allow_methods=["*"],
@@ -432,6 +492,16 @@ async def run_lending_backtest(
         # Borrow Interest Paid (in Token)
         # We can sum up or just take difference
         
+        # Get dynamic prices
+        start_ts_ms = first["timestamp"] * 1000
+        end_ts_ms = last["timestamp"] * 1000
+        
+        price_bnb_start = get_bnb_price(start_ts_ms)
+        price_bnb_end = get_bnb_price(end_ts_ms)
+        
+        # Assume USDC = 1.0
+        price_usdc = 1.0
+        
         if req.is_bnb_supply:
             # Supply BNB, Borrow USDC
             supply_start = req.supply_amount
@@ -444,13 +514,11 @@ async def run_lending_backtest(
             net_bnb = supply_end - supply_start
             net_usdc = -(borrow_end - borrow_start)
             
-            # Convert to USD (Approx Price)
-            # Assume 1 BNB = 300 USD (Static for summary purposes if no price available)
-            # Assume 1 USDC = 1 USD
-            price_bnb = 300.0
+            # Calculate Equity
+            initial_equity_usd = (supply_start * price_bnb_start) - (borrow_start * price_usdc)
+            final_equity_usd = (supply_end * price_bnb_end) - (borrow_end * price_usdc)
             
-            pnl_usd = (net_bnb * price_bnb) + net_usdc
-            initial_equity_usd = (supply_start * price_bnb) - borrow_start
+            pnl_usd = final_equity_usd - initial_equity_usd
             
         else:
             # Supply USDC, Borrow BNB
@@ -463,10 +531,10 @@ async def run_lending_backtest(
             net_usdc = supply_end - supply_start
             net_bnb = -(borrow_end - borrow_start)
             
-            price_bnb = 300.0
-            
-            pnl_usd = net_usdc + (net_bnb * price_bnb)
-            initial_equity_usd = supply_start - (borrow_start * price_bnb)
+            initial_equity_usd = (supply_start * price_usdc) - (borrow_start * price_bnb_start)
+            final_equity_usd = (supply_end * price_usdc) - (borrow_end * price_bnb_end)
+
+            pnl_usd = final_equity_usd - initial_equity_usd
 
         final_equity_usd = initial_equity_usd + pnl_usd
         roi = (pnl_usd / initial_equity_usd * 100) if initial_equity_usd != 0 else 0.0

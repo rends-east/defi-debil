@@ -67,18 +67,23 @@ const Demo = () => {
             <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight">
               Ready to Validate Your
               <br />
-              DeFi Strategy?
+              <a href="/llms.txt" target="_blank" className="hover:text-blue-200 transition-colors decoration-dotted underline">
+                AI Agent Strategy? 🦞
+              </a>
             </h2>
 
             {/* Description */}
             <p className="text-xl md:text-2xl text-blue-100 mb-10 leading-relaxed">
-              Join traders and investors using DeFi Debil to backtest strategies on BNB Chain. 
-              Access aggregated historical data and powerful analytics in one unified platform.
+              Join traders and <strong>OpenClaw 🦞</strong> agents using DeFi Debil. 
+              Native support for <strong>x402</strong> protocol and automated backtesting.
             </p>
 
             {/* CTAs */}
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
-              <button className="group relative px-8 py-4 bg-white text-purple-600 rounded-full font-bold text-lg shadow-2xl hover:shadow-3xl transform hover:scale-105 transition-all duration-300">
+              <button 
+                onClick={() => window.open('https://app.debil.capital', '_blank')}
+                className="group relative px-8 py-4 bg-white text-purple-600 rounded-full font-bold text-lg shadow-2xl hover:shadow-3xl transform hover:scale-105 transition-all duration-300"
+              >
                 Try Demo Now
                 <svg
                   className="inline-block ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform"
@@ -88,13 +93,6 @@ const Demo = () => {
                 >
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                 </svg>
-              </button>
-
-              <button className="group px-8 py-4 bg-transparent border-2 border-white text-white rounded-full font-semibold text-lg hover:bg-white hover:text-purple-600 transition-all duration-300">
-                <svg className="inline-block mr-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                </svg>
-                Schedule a Call
               </button>
             </div>
 

@@ -602,7 +602,7 @@ export const Workspace = ({
             Click "New Backtest" in the sidebar to start configuring your first strategy
           </p>
           <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
-            <p>✓ Historical data from 15+ protocols</p>
+            <p>✓ Historical data from Biggest BNB protocols</p>
             <p>✓ Support for multiple strategy types</p>
             <p>✓ Comprehensive risk analytics</p>
           </div>

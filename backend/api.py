@@ -1,9 +1,10 @@
 """
 FastAPI Backend for DeFi Debil Backtesting.
 """
+import os
 from typing import List, Union, Literal, Optional, Any
 from pydantic import BaseModel, Field
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 import uvicorn
 import math
 
@@ -11,13 +12,72 @@ import math
 # We need to make sure the imports work from the root directory
 import sys
 from pathlib import Path
+
+from x402.mechanisms.evm.constants import NETWORK_CONFIGS
 sys.path.append(str(Path(__file__).parent.parent))
 
 from backend.lending_backtest import simulate_lending
 from backend.perp_backtest import simulate_perp
 from backend.clmm_backtest import simulate_clmm
 
+# --- x402 payment protocol (testnet) ---
+from x402.http import FacilitatorConfig, HTTPFacilitatorClient, PaymentOption
+from x402.http.middleware.fastapi import PaymentMiddlewareASGI
+from x402.http.types import RouteConfig
+from x402.mechanisms.evm.exact import ExactEvmServerScheme
+from x402.schemas import AssetAmount, Network
+from x402.server import x402ResourceServer
+
+
+# Testnet: Base Sepolia. Для продакшена см. x402 docs (eip155:8453 для Base mainnet).
+X402_NETWORK: Network = "eip155:56"
+X402_FACILITATOR_URL = os.getenv("X402_FACILITATOR_URL", "https://api.x402.unibase.com/v2")
+# Адрес для приёма платежей (USDC). Для теста можно любой EVM-адрес.
+X402_PAY_TO = os.getenv("X402_PAY_TO", "0x0000000000000000000000000000000000000001")
+
+NETWORK_CONFIGS[X402_NETWORK] = {
+        "chain_id": 56,
+        "default_asset": {
+            "address": "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d",
+            "name": "USD Coin",
+            "version": "2",
+            "decimals": 18,
+        },
+        "supported_assets": {
+            "USDC": {
+                "address": "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d",
+                "name": "USD Coin",
+                "version": "2",
+                "decimals": 18,
+            },
+        },
+    }
+
+
+facilitator = HTTPFacilitatorClient(FacilitatorConfig(url=X402_FACILITATOR_URL))
+x402_server = x402ResourceServer(facilitator)
+x402_server.register(X402_NETWORK, ExactEvmServerScheme())
+
+x402_routes: dict[str, RouteConfig] = {
+    "GET /secretpay": RouteConfig(
+        accepts=[
+            PaymentOption(
+                scheme="exact",
+                pay_to=X402_PAY_TO,
+                price=AssetAmount(
+                    amount="1000000000000000", 
+                    asset="0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d",
+                    extra={"name": "USDC", "version": "2", "chain_id": 56, "decimals": 18}),
+                network=X402_NETWORK
+            ),
+        ],
+        mime_type="application/json",
+        description="Secret paywalled response (x402 test endpoint)",
+    ),
+}
+
 app = FastAPI(title="DeFi Debil Backtest API")
+app.add_middleware(PaymentMiddlewareASGI, routes=x402_routes, server=x402_server)
 
 # --- Models ---
 
@@ -242,6 +302,28 @@ def run_clmm_backtest(req: CLMMRequest):
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# --- x402 protected endpoint: полный цикл протокола ---
+# 1) Запрос без оплаты → сервер отвечает 402 + инструкции по оплате в теле.
+# 2) Клиент платит (подписывает payload) и повторяет запрос с заголовком PAYMENT-SIGNATURE (Base64 JSON).
+# 3) Мидлварь проверяет платёж через facilitator (verify/settle), затем отдаёт запрос в этот handler.
+# 4) Успешный ответ возвращается с заголовком PAYMENT-RESPONSE (подтверждение settlement).
+
+class SecretPayResponse(BaseModel):
+    secret: str = Field(..., description="Paywalled secret content")
+    paid: bool = True
+
+@app.get("/secretpay", response_model=SecretPayResponse)
+async def get_secretpay() -> SecretPayResponse:
+    """Тестовый эндпоинт, закрытый по протоколу x402. Доступен только после успешной оплаты."""
+    return SecretPayResponse(
+        secret="DeFi Debil secret: 402 Payment Required works!",
+        paid=True,
+    )
+
+@app.head("/secretpay")
+async def head_secretpay():
+    return Response(status_code=200)
 
 @app.post("/backtest/batch", response_model=BatchResponse)
 def run_batch_backtest(batch: BatchRequest):

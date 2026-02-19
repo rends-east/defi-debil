@@ -6,6 +6,7 @@ import Features from './components/Features';
 import HowItWorks from './components/HowItWorks';
 import UseCases from './components/UseCases';
 import Stats from './components/Stats';
+import Pricing from './components/Pricing';
 import Demo from './components/Demo';
 import Footer from './components/Footer';
 
@@ -23,6 +24,7 @@ function App() {
           <HowItWorks />
           <UseCases />
           <Stats />
+          <Pricing />
           <Demo />
         </main>
 

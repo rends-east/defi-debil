@@ -18,6 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Separator } from '../ui/separator';
+import { DonationModal } from '../ui/DonationModal';
 
 // Helper to format currency
 const fmtUSD = (val) => {
@@ -80,6 +81,7 @@ const CustomTooltip = ({ active, payload, label }) => {
 
 export const BacktestResults = ({ results, onBack }) => {
   const [selectedTab, setSelectedTab] = useState('overview'); // 'overview' or strategy index
+  const [isDonationModalOpen, setIsDonationModalOpen] = useState(false);
 
   // If single result, wrap in array but treat as single strategy
   const isBatch = Array.isArray(results);
@@ -183,12 +185,20 @@ export const BacktestResults = ({ results, onBack }) => {
             <Button variant="outline" onClick={onBack} className="flex-1 md:flex-none">
               Adjust Config
             </Button>
-            <Button className="flex-1 md:flex-none bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/20 border-0">
+            <Button 
+              onClick={() => setIsDonationModalOpen(true)}
+              className="flex-1 md:flex-none bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/20 border-0"
+            >
               Deploy
             </Button>
           </div>
         </div>
       </div>
+
+      <DonationModal 
+        isOpen={isDonationModalOpen}
+        onClose={() => setIsDonationModalOpen(false)}
+      />
 
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6 md:space-y-8 pb-20">

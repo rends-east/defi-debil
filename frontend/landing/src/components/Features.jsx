@@ -107,6 +107,7 @@ const Features = () => {
               <a 
                 href={feature.link || '#'}
                 target={feature.link ? "_blank" : "_self"}
+                rel={feature.link ? "noreferrer" : undefined}
                 className="mt-6 flex items-center text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300 cursor-pointer"
               >
                 <span className="font-semibold text-sm">Learn more</span>

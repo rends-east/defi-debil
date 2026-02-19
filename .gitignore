@@ -56,6 +56,7 @@ data/clmm/*.json
 
 # production
 /build
+/frontend/landing/build
 
 # misc
 .DS_Store

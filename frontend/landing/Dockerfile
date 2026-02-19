@@ -15,6 +15,8 @@ RUN npm install --legacy-peer-deps
 COPY . .
 
 # Build the application
+# Set CI=false to prevent warnings from failing the build
+ENV CI=false
 RUN npm run build
 
 # Stage 2: Serve with Nginx

@@ -4,6 +4,7 @@ import { Label } from '../ui/label';
 import { Select } from '../ui/select';
 import { ArrowRight, ChevronDown } from 'lucide-react';
 import { AssetIcon } from '../ui/AssetIcon';
+import { getLendingPositionHealth } from '../../lib/api';
 
 // Custom icon-aware dropdown for borrow asset
 const BorrowAssetSelect = ({ value, options, onChange, locked }) => {
@@ -55,12 +56,14 @@ const BorrowAssetSelect = ({ value, options, onChange, locked }) => {
   );
 };
 
-export const LendingModule = ({ supplyAsset = 'BNB', onConfigChange, locked = false }) => {
+export const LendingModule = ({ supplyAsset = 'BNB', supplyAmount = 0, onConfigChange, onPositionHealthChange, locked = false }) => {
   const [config, setConfig] = useState({
     protocol: 'venus',
     borrowAsset: 'none',
     borrowAmount: '',
   });
+
+  const [positionHealth, setPositionHealth] = useState(null);
 
   // Track previous supplyAsset so we only reset on actual changes, not on mount.
   const prevSupplyAsset = useRef(supplyAsset);
@@ -75,6 +78,27 @@ export const LendingModule = ({ supplyAsset = 'BNB', onConfigChange, locked = fa
     if (onConfigChange) onConfigChange({ ...reset, supplyAsset });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supplyAsset]);
+
+  useEffect(() => {
+    const borrow = parseFloat(config.borrowAmount);
+    if (!config.borrowAsset || config.borrowAsset === 'none' || !borrow || borrow <= 0 || !supplyAmount) {
+      setPositionHealth(null);
+      onPositionHealthChange?.(null);
+      return;
+    }
+    const is_bnb_supply = supplyAsset === 'BNB';
+    getLendingPositionHealth({ supply_amount: supplyAmount, borrow_amount: borrow, is_bnb_supply })
+      .then(data => {
+        const h = data.position_health;
+        setPositionHealth(h);
+        onPositionHealthChange?.(h);
+      })
+      .catch(() => {
+        setPositionHealth(null);
+        onPositionHealthChange?.(null);
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [supplyAmount, supplyAsset, config.borrowAmount, config.borrowAsset]);
 
   const handleChange = (field, value) => {
     const newConfig = { ...config, [field]: value };
@@ -151,6 +175,27 @@ export const LendingModule = ({ supplyAsset = 'BNB', onConfigChange, locked = fa
             onChange={(e) => handleChange('borrowAmount', e.target.value)}
           />
         </div>
+      )}
+
+      {/* Position health (0–100%) — label and value on one line, label not caps */}
+      {positionHealth !== null && (
+        <div className="flex items-baseline gap-2">
+          <span className="text-xs font-semibold text-gray-500">Position health</span>
+          <span className={`text-sm font-bold tabular-nums ${
+            positionHealth >= 80 ? 'text-emerald-600'
+            : positionHealth >= 50 ? 'text-amber-500'
+            : 'text-red-500'
+          }`}>
+            {positionHealth.toFixed(0)}%
+          </span>
+        </div>
+      )}
+
+      {/* Warning when position would be liquidated — inside card, compact, English */}
+      {positionHealth === 0 && (
+        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5">
+          This position would be automatically liquidated.
+        </p>
       )}
     </div>
   );

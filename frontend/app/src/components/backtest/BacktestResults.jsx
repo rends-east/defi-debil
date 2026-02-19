@@ -267,7 +267,7 @@ export const BacktestResults = ({ results, onBack }) => {
 
           <div className="h-[300px] md:h-[400px] w-full p-4 md:p-6">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+              <AreaChart data={chartData} margin={{ top: 10, right: 32, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.2}/>
@@ -291,8 +291,8 @@ export const BacktestResults = ({ results, onBack }) => {
                   minTickGap={50}
                 />
                 <YAxis 
-                  stroke="#94a3b8" 
-                  fontSize={12} 
+                  stroke="#64748b" 
+                  tick={{ fontSize: 14, fill: '#475569' }}
                   tickLine={false} 
                   axisLine={false} 
                   tickFormatter={(val) => `$${val >= 1000 ? (val/1000).toFixed(1) + 'k' : val.toFixed(0)}`}

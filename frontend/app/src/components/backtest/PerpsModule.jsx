@@ -7,6 +7,7 @@ export const PerpsModule = ({
   locked = false,
   investedAmt = 0,
   investedAsset = 'USDC',
+  effectiveBalance = 0,
 }) => {
   const [config, setConfig] = useState({
     exchange: 'Aster',
@@ -27,6 +28,14 @@ export const PerpsModule = ({
 
   return (
     <div className="space-y-4">
+      {effectiveBalance === 0 && (
+        <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg bg-amber-50 border border-amber-200">
+          <span className="text-amber-500 text-sm shrink-0">⚠</span>
+          <p className="text-xs font-medium text-amber-700 leading-snug">
+            No USDC remaining in portfolio — this strategy will have no capital to deploy.
+          </p>
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-4">
         {/* Exchange */}
         <div className="space-y-1.5">

@@ -14,7 +14,7 @@ import secrets
 # Add project root to sys path
 sys.path.append(str(Path(__file__).parent.parent))
 
-from backend.lending_backtest import simulate_lending
+from backend.lending_backtest import simulate_lending, health_factor as lending_health_factor
 from backend.perp_backtest import simulate_perp
 from backend.clmm_backtest import simulate_clmm
 from backend.database import users_collection, history_collection
@@ -61,6 +61,14 @@ class CLMMRequest(BaseModel):
     initial_token1: float = Field(..., description="Initial USDC amount")
     min_price: float = Field(..., description="Min price of the range (BNB/USDC)")
     max_price: float = Field(..., description="Max price of the range (BNB/USDC)")
+
+class PositionHealthRequest(BaseModel):
+    supply_amount: float = Field(..., description="Supply amount (BNB or USDC)")
+    borrow_amount: float = Field(..., description="Borrow amount (USDC or BNB)")
+    is_bnb_supply: bool = Field(..., description="True if supplying BNB, False if supplying USDC")
+
+class PositionHealthResponse(BaseModel):
+    position_health: float  # 0–100%
 
 class BacktestSummary(BaseModel):
     final_pnl_usd: float
@@ -245,6 +253,21 @@ async def get_history_detail(history_id: str, user: dict = Depends(get_current_u
             
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# --- Lending Utility Endpoints ---
+
+@app.post("/lending/position-health", response_model=PositionHealthResponse)
+async def get_position_health(req: PositionHealthRequest):
+    hf = lending_health_factor(req.supply_amount, req.borrow_amount, req.is_bnb_supply)
+    # HF <= 1 → 0% (liquidatable), HF >= 2 → 100% (safe), linear in between
+    if not math.isfinite(hf) or hf >= 2.0:
+        pct = 100.0
+    elif hf <= 1.0:
+        pct = 0.0
+    else:
+        pct = (hf - 1.0) * 100.0
+    return PositionHealthResponse(position_health=pct)
 
 
 # --- Backtest Endpoints (Protected) ---

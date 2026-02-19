@@ -98,8 +98,14 @@ const AddDropdown = ({ options, onSelect, label, disabled = false, variant = 'gh
           {options.map(opt => (
             <button
               key={opt.value}
-              onClick={() => { onSelect(opt.value); setOpen(false); }}
-              className="w-full text-left px-4 py-2.5 text-sm font-medium hover:bg-gray-50 transition-colors flex items-center gap-2.5 text-gray-700"
+              disabled={opt.disabled}
+              title={opt.disabledReason}
+              onClick={() => { if (!opt.disabled) { onSelect(opt.value); setOpen(false); } }}
+              className={`w-full text-left px-4 py-2.5 text-sm font-medium transition-colors flex items-center gap-2.5 ${
+                opt.disabled
+                  ? 'opacity-40 cursor-not-allowed text-gray-400'
+                  : 'hover:bg-gray-50 text-gray-700'
+              }`}
             >
               {opt.iconEl
                 ? opt.iconEl
@@ -107,6 +113,11 @@ const AddDropdown = ({ options, onSelect, label, disabled = false, variant = 'gh
                   ? <span className="text-base">{opt.icon}</span>
                   : null}
               {opt.label}
+              {opt.disabled && opt.disabledReason && (
+                <span className="ml-auto text-[10px] text-gray-400 font-normal truncate max-w-[100px]">
+                  {opt.disabledReason}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -329,6 +340,7 @@ const StrategyCard = ({
   onAssetChange,
   onConfigChange,
   onToggleLock,
+  onPositionHealthChange,
 }) => {
   const sc = STRATEGY_CONFIG[strategy.type];
   const locked = strategy.locked ?? false;
@@ -336,11 +348,14 @@ const StrategyCard = ({
   const moduleProps = { onConfigChange, locked };
   if (strategy.type === 'lending') {
     moduleProps.supplyAsset = strategy.asset;
+    moduleProps.supplyAmount = effectiveBalance * (strategy.allocation / 100);
+    moduleProps.onPositionHealthChange = (health) => onPositionHealthChange?.(strategy.id, health);
   }
   if (strategy.type === 'perps') {
     moduleProps.investedAmt = investedAmt ?? 0;
     moduleProps.investedAsset = investedAsset ?? 'USDC';
-    strategy.asset = 'USDC'
+    moduleProps.effectiveBalance = effectiveBalance ?? 0;
+    strategy.asset = 'USDC';
   }
   if (strategy.type === 'cl') {
     moduleProps.availableBNB = availableBNB ?? 0;
@@ -448,6 +463,21 @@ export const Workspace = ({
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [lendingPositionHealth, setLendingPositionHealth] = useState({});
+
+  // Clean up position health when a lending strategy is removed so Run Backtest unlocks
+  const strategyIdsKey = strategies.map(s => s.id).sort().join(',');
+  useEffect(() => {
+    const ids = new Set(strategies.map(s => s.id));
+    setLendingPositionHealth(prev => {
+      const next = { ...prev };
+      let changed = false;
+      Object.keys(next).forEach(id => {
+        if (!ids.has(id)) { delete next[id]; changed = true; }
+      });
+      return changed ? next : prev;
+    });
+  }, [strategyIdsKey]);
 
   // If historyResult is provided (from App -> Workspace), set it as results
   useEffect(() => {
@@ -604,6 +634,49 @@ export const Workspace = ({
     return acc;
   }, {});
 
+  // Remaining after ALL strategies — used to disable "Add Strategy" options
+  const addableBNB = seqRemaining(effectiveBalances['BNB'] ?? 0, 'BNB', strategies);
+  const addableUSDC = seqRemaining(effectiveBalances['USDC'] ?? 0, 'USDC', strategies);
+
+  // Run Backtest blockers
+  const runBlockers = (() => {
+    const blockers = [];
+    strategies.forEach((s, i) => {
+      const asset = s.type === 'perps' ? 'USDC' : s.asset;
+      const prior = strategies.slice(0, i);
+      const effBal = seqRemaining(effectiveBalances[asset] ?? 0, asset, prior);
+
+      if (s.type === 'cl') {
+        const bnbAmt = parseFloat(s.config?.amountBNB) || 0;
+        const usdcAmt = parseFloat(s.config?.amountUSDC) || 0;
+        if (bnbAmt === 0 && usdcAmt === 0) {
+          blockers.push(`Strategy ${i + 1} (CL) — enter at least one amount`);
+        } else {
+          const CURRENT_PRICE = 311.33;
+          // min price required only when USDC is set; max price only when BNB is set
+          const minRequired = usdcAmt > 0;
+          const maxRequired = bnbAmt > 0;
+          const minVal = parseFloat(s.config?.minPrice) || 0;
+          const maxVal = parseFloat(s.config?.maxPrice) || 0;
+          const minPresent = minVal > 0;
+          const maxPresent = maxVal > 0;
+          if (!minPresent && !maxPresent && minRequired && maxRequired) {
+            blockers.push(`Strategy ${i + 1} (CL) — set min & max price`);
+          } else {
+            if (minRequired && !minPresent) blockers.push(`Strategy ${i + 1} (CL) — set min price`);
+            if (maxRequired && !maxPresent) blockers.push(`Strategy ${i + 1} (CL) — set max price`);
+            if (minPresent && minVal >= CURRENT_PRICE) blockers.push(`Strategy ${i + 1} (CL) — min price must be below ${CURRENT_PRICE}`);
+            if (maxPresent && maxVal <= CURRENT_PRICE) blockers.push(`Strategy ${i + 1} (CL) — max price must be above ${CURRENT_PRICE}`);
+          }
+        }
+      } else if (effBal === 0) {
+        const label = s.type === 'perps' ? 'Perpetuals' : 'Lending';
+        blockers.push(`Strategy ${i + 1} (${label}) — no ${asset} available`);
+      }
+    });
+    return blockers;
+  })();
+
   return (
     <div className="flex-1 h-full bg-gray-50 overflow-auto">
       <div className="max-w-4xl mx-auto px-4 md:px-6 py-6 md:py-8">
@@ -741,6 +814,11 @@ export const Workspace = ({
                     onAssetChange={(asset) => onStrategyAssetChange(strategy.id, asset)}
                     onConfigChange={(config) => onStrategyConfigChange(strategy.id, config)}
                     onToggleLock={() => onToggleLock(strategy.id)}
+                    onPositionHealthChange={(id, health) => setLendingPositionHealth(prev => {
+                    const next = { ...prev };
+                    if (health === null) delete next[id]; else next[id] = health;
+                    return next;
+                  })}
                   />
                 </div>
                 <div className="w-full md:w-44 shrink-0">
@@ -769,53 +847,93 @@ export const Workspace = ({
             );
           })}
 
-          {/* Add Strategy */}
-          <div className="max-w-2xl flex justify-center py-2">
-            <AddDropdown
-              label="Add Strategy"
-              options={[
-                { value: 'lending', label: 'Lending', icon: '💰' },
-                { value: 'perps', label: 'Perpetuals', icon: '📈' },
-                { value: 'cl', label: 'Conc. Liquidity', icon: '💧' },
-              ]}
-              onSelect={onAddStrategy}
-            />
+          {/* Add Strategy — same row as strategy cards & Run Backtest, centered in the strategy column */}
+          <div className="flex flex-col md:flex-row gap-3 items-start">
+            <div className="flex-1 min-w-0 w-full flex justify-center py-2">
+              <AddDropdown
+                label="Add Strategy"
+                options={[
+                  {
+                    value: 'lending',
+                    label: 'Lending',
+                    icon: '💰',
+                    disabled: addableBNB === 0 && addableUSDC === 0,
+                    disabledReason: 'No assets left',
+                  },
+                  {
+                    value: 'perps',
+                    label: 'Perpetuals',
+                    icon: '📈',
+                    disabled: addableUSDC === 0,
+                    disabledReason: 'No USDC left',
+                  },
+                  {
+                    value: 'cl',
+                    label: 'Conc. Liquidity',
+                    icon: '💧',
+                    disabled: addableBNB === 0 && addableUSDC === 0,
+                    disabledReason: 'No assets left',
+                  },
+                ]}
+                onSelect={onAddStrategy}
+              />
+            </div>
+            <div className="w-full md:w-44 shrink-0" />
+            <div className="w-14 shrink-0 hidden md:block" />
           </div>
 
           {/* Run Backtest */}
-          {strategies.length > 0 && !historyMode && (
-            <div className="max-w-2xl pb-6 space-y-2">
-              <Button
-                variant="gradient"
-                size="lg"
-                className="w-full relative"
-                onClick={handleRunBacktest}
-                disabled={portfolio.length === 0 || loading}
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    Simulating Strategy...
-                  </>
-                ) : (
-                  <>
-                    <Play className="mr-2 h-5 w-5" />
-                    Run Backtest
-                  </>
+          {strategies.length > 0 && !historyMode && (() => {
+            const hasLiquidatableLending = Object.values(lendingPositionHealth).some(h => h === 0);
+            const isBlocked = portfolio.length === 0 || loading || hasLiquidatableLending || runBlockers.length > 0;
+            return (
+            <div className="flex flex-col md:flex-row gap-3 items-start">
+              <div className="flex-1 min-w-0 w-full pb-6 space-y-2">
+                <Button
+                  variant="gradient"
+                  size="lg"
+                  className="w-full relative"
+                  onClick={handleRunBacktest}
+                  disabled={isBlocked}
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      Simulating Strategy...
+                    </>
+                  ) : (
+                    <>
+                      <Play className="mr-2 h-5 w-5" />
+                      Run Backtest
+                    </>
+                  )}
+                </Button>
+                {error && (
+                  <p className="text-sm text-center text-red-500 bg-red-50 p-2 rounded-lg border border-red-100">
+                    {error}
+                  </p>
                 )}
-              </Button>
-              {error && (
-                <p className="text-sm text-center text-red-500 bg-red-50 p-2 rounded-lg border border-red-100">
-                  {error}
-                </p>
-              )}
-              {portfolio.length === 0 && (
-                <p className="text-xs text-center text-muted-foreground mt-2">
-                  Add assets to your portfolio before running
-                </p>
-              )}
+                {portfolio.length === 0 && (
+                  <p className="text-xs text-center text-muted-foreground">
+                    Add assets to your portfolio before running
+                  </p>
+                )}
+                {portfolio.length > 0 && runBlockers.length > 0 && (
+                  <ul className="space-y-1">
+                    {runBlockers.map((msg, i) => (
+                      <li key={i} className="flex items-start gap-1.5 text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+                        <span className="shrink-0 mt-px">⚠</span>
+                        {msg}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              <div className="w-full md:w-44 shrink-0" />
+              <div className="w-14 shrink-0 hidden md:block" />
             </div>
-          )}
+            );
+          })()}
         </div>
 
       </div>

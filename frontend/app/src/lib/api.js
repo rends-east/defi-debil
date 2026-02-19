@@ -65,4 +65,9 @@ export const runBatchBacktest = async (items) => {
   return response.data;
 };
 
+export const getLendingPositionHealth = async ({ supply_amount, borrow_amount, is_bnb_supply }) => {
+  const response = await api.post('/lending/position-health', { supply_amount, borrow_amount, is_bnb_supply });
+  return response.data;
+};
+
 export default api;

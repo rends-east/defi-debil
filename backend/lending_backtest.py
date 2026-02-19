@@ -39,6 +39,15 @@ MANTISSA_SCALE = 1e18
 # several times in history and is modeled as a piecewise function of block.
 DEFAULT_RESERVE_FACTOR_USDC = 0.10
 
+# Venus Core Pool: BNB price for health factor (USDC per BNB).
+BNB_PRICE_USDC = 311.6
+
+# Collateral factor (Core Pool LT = CF) for health factor.
+COLLATERAL_FACTOR_BNB = 0.8
+COLLATERAL_FACTOR_USDC = 0.825
+LIQUIDATION_THRESHOLD_BNB  = 0.8
+LIQUIDATION_THRESHOLD_USDC = 0.825
+
 
 class StepState(TypedDict):
     """
@@ -313,4 +322,31 @@ def simulate_lending(
         prev_block = current_block
 
     return result
+
+
+def health_factor(
+    supply_amount: float,
+    borrow_amount: float,
+    is_bnb: bool,
+) -> float:
+    """
+    Venus-style health factor for a supply/borrow position (Core Pool, BNB chain).
+
+    Same position semantics as simulate_lending:
+        is_bnb=True  → supply BNB, borrow USDC
+        is_bnb=False → supply USDC, borrow BNB
+
+    HF = (collateral value × LT) / total borrow value.
+    BNB price in USDC: 311.6.
+    """
+    if is_bnb:
+        collateral_usd = supply_amount * BNB_PRICE_USDC * LIQUIDATION_THRESHOLD_BNB
+        borrow_usd = borrow_amount  # USDC
+    else:
+        collateral_usd = supply_amount * LIQUIDATION_THRESHOLD_USDC  # USDC
+        borrow_usd = borrow_amount * BNB_PRICE_USDC
+
+    if borrow_usd <= 0:
+        return float("inf")
+    return collateral_usd / borrow_usd
 

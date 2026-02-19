@@ -35,7 +35,7 @@ services:
     volumes:
       - mongo-data:/data/db
     networks:
-      - internal
+      - web
 
   backend:
     build:
@@ -48,11 +48,12 @@ services:
       - DB_NAME=defi_debil
       - JWT_SECRET=super_secret_jwt_key_change_me
       - PYTHONUNBUFFERED=1
+    volumes:
+      - ./data:/app/data
     depends_on:
       - mongo
     networks:
       - web
-      - internal
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.backend.rule=Host(`api.debil.capital`)"
@@ -81,6 +82,4 @@ volumes:
 
 networks:
   web:
-    driver: bridge
-  internal:
     driver: bridge

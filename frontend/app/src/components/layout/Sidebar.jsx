@@ -1,12 +1,10 @@
 import React from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, Wallet } from 'lucide-react';
 import { Button } from '../ui/button';
-import { Separator } from '../ui/separator';
 import { WalletButton } from '../auth/WalletButton';
 import { BacktestHistory } from '../backtest/BacktestHistory';
-import { useAuth } from '../../context/AuthContext';
 
-export const Sidebar = ({ onNewBacktest }) => {
+export const Sidebar = ({ onNewBacktest, onLoadHistory }) => {
   return (
     <div className="w-full h-16 md:w-80 md:h-screen bg-white border-b md:border-b-0 md:border-r border-gray-200 flex flex-row md:flex-col items-center md:items-stretch px-4 md:px-0 shrink-0">
       {/* Header */}
@@ -39,7 +37,7 @@ export const Sidebar = ({ onNewBacktest }) => {
           <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">History</h2>
         </div>
         <div className="flex-1 overflow-y-auto px-4 pb-4">
-          <BacktestHistory />
+          <BacktestHistory onLoadHistory={onLoadHistory} />
         </div>
       </div>
       

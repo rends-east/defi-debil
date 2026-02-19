@@ -17,15 +17,20 @@ export const MainLayout = ({
   onStrategyConfigChange,
   onToggleLock,
   onRunBacktest,
+  historyMode,
+  historyResult,
+  onLoadHistory,
 }) => {
   return (
     <div className="flex flex-col md:flex-row h-screen overflow-hidden">
-      <Sidebar onNewBacktest={onNewBacktest} />
+      <Sidebar onNewBacktest={onNewBacktest} onLoadHistory={onLoadHistory} />
       <div className="flex-1 h-full overflow-hidden relative">
         <Workspace
           currentView={currentView}
           portfolio={portfolio}
           strategies={strategies}
+          historyMode={historyMode}
+          historyResult={historyResult}
           onAddAsset={onAddAsset}
           onRemoveAsset={onRemoveAsset}
           onAssetBalanceChange={onAssetBalanceChange}

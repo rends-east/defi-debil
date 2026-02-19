@@ -441,121 +441,123 @@ export const Workspace = ({
   onStrategyConfigChange,
   onToggleLock,
   onRunBacktest,
+  historyMode = false,
+  historyResult = null,
 }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, requireAuth } = useAuth();
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  // If historyResult is provided (from App -> Workspace), set it as results
+  useEffect(() => {
+    if (historyResult) {
+      // Fix: Check if it's a batch response wrapper and extract results
+      if (historyResult.results && Array.isArray(historyResult.results)) {
+        setResults(historyResult.results);
+      } else {
+        setResults(historyResult);
+      }
+    } else if (!historyMode) {
+        setResults(null);
+    }
+  }, [historyResult, historyMode]);
+
   const handleRunBacktest = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      // 1. Calculate effective balances and invested amounts for all strategies
-      // Reuse the same logic as render
-      
-      // Aggregate borrow amounts
-      const borrowedByAsset = strategies
-        .filter(s => s.type === 'lending' && s.config?.borrowAsset && s.config.borrowAsset !== 'none')
-        .reduce((acc, s) => {
-          const asset = s.config.borrowAsset;
-          const amount = parseFloat(s.config.borrowAmount) || 0;
-          acc[asset] = (acc[asset] || 0) + amount;
+    if (historyMode) return; // Disable running in history mode
+    // ... existing logic ...
+    // Wrap execution in requireAuth to ensure user is logged in before running
+    requireAuth(async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        // 1. Calculate effective balances and invested amounts for all strategies
+        // Reuse the same logic as render
+        
+        // Aggregate borrow amounts
+        const borrowedByAsset = strategies
+          .filter(s => s.type === 'lending' && s.config?.borrowAsset && s.config.borrowAsset !== 'none')
+          .reduce((acc, s) => {
+            const asset = s.config.borrowAsset;
+            const amount = parseFloat(s.config.borrowAmount) || 0;
+            acc[asset] = (acc[asset] || 0) + amount;
+            return acc;
+          }, {});
+
+        // Effective balance per asset = base portfolio + borrowed
+        const effectiveBalances = ['BNB', 'USDC'].reduce((acc, asset) => {
+          const base = parseFloat(portfolio.find(a => a.asset === asset)?.balance) || 0;
+          acc[asset] = base + (borrowedByAsset[asset] || 0);
           return acc;
         }, {});
 
-      // Effective balance per asset = base portfolio + borrowed
-      const effectiveBalances = ['BNB', 'USDC'].reduce((acc, asset) => {
-        const base = parseFloat(portfolio.find(a => a.asset === asset)?.balance) || 0;
-        acc[asset] = base + (borrowedByAsset[asset] || 0);
-        return acc;
-      }, {});
+        // 2. Prepare request items
+        const requestItems = strategies.map((strategy, index) => {
+          const prior = strategies.slice(0, index);
+          const strategyEffectiveBalance = seqRemaining(effectiveBalances[strategy.asset] ?? 0, strategy.asset, prior);
+          const strategyInvestedAmt = strategyEffectiveBalance * (strategy.allocation / 100);
 
-      // 2. Prepare request items
-      const requestItems = strategies.map((strategy, index) => {
-        const prior = strategies.slice(0, index);
-        strategy.asset = 'USDC'; // TMP fix
-        const strategyEffectiveBalance = seqRemaining(effectiveBalances[strategy.asset] ?? 0, strategy.asset, prior);
-        const strategyInvestedAmt = strategyEffectiveBalance * (strategy.allocation / 100);
+          if (strategy.type === 'lending') {
+            return {
+              type: 'lending',
+              params: {
+                supply_amount: strategyInvestedAmt,
+                borrow_amount: parseFloat(strategy.config.borrowAmount) || 0,
+                is_bnb_supply: strategy.asset === 'BNB'
+              }
+            };
+          } else if (strategy.type === 'perps') {
+            return {
+              type: 'perp',
+              params: {
+                initial_collateral: strategyInvestedAmt,
+                leverage: parseFloat(strategy.config.leverage) || 1,
+                is_long: strategy.config.direction === 'long'
+              }
+            };
+          } else if (strategy.type === 'cl') {
+            return {
+              type: 'clmm',
+              params: {
+                initial_token0: parseFloat(strategy.config.amountBNB) || 0,
+                initial_token1: parseFloat(strategy.config.amountUSDC) || 0,
+                min_price: parseFloat(strategy.config.minPrice) || 0,
+                max_price: parseFloat(strategy.config.maxPrice) || 0
+              }
+            };
+          }
+          return null;
+        }).filter(Boolean);
 
-        console.log(effectiveBalances, strategy.allocation, strategy.asset);
-        if (strategy.type === 'lending') {
-          return {
-            type: 'lending',
-            params: {
-              supply_amount: strategyInvestedAmt,
-              borrow_amount: parseFloat(strategy.config.borrowAmount) || 0,
-              is_bnb_supply: strategy.asset === 'BNB'
-            }
-          };
-        } else if (strategy.type === 'perps') {
-          return {
-            type: 'perp',
-            params: {
-              initial_collateral: strategyInvestedAmt,
-              leverage: parseFloat(strategy.config.leverage) || 1,
-              is_long: strategy.config.direction === 'long'
-            }
-          };
-        } else if (strategy.type === 'cl') {
-          return {
-            type: 'clmm',
-            params: {
-              initial_token0: parseFloat(strategy.config.amountBNB) || 0,
-              initial_token1: parseFloat(strategy.config.amountUSDC) || 0,
-              min_price: parseFloat(strategy.config.minPrice) || 0,
-              max_price: parseFloat(strategy.config.maxPrice) || 0
-            }
-          };
+        // 3. Send request
+        let res;
+        if (requestItems.length === 1) {
+          const item = requestItems[0];
+          if (item.type === 'lending') res = await runLendingBacktest(item.params);
+          else if (item.type === 'perp') res = await runPerpBacktest(item.params);
+          else if (item.type === 'clmm') res = await runClmmBacktest(item.params);
+        } else if (requestItems.length > 1) {
+          const batchRes = await runBatchBacktest(requestItems);
+          res = batchRes.results; // Extract results array
         }
-        return null;
-      }).filter(Boolean);
 
-      // 3. Send request
-      let res;
-      if (requestItems.length === 1) {
-        const item = requestItems[0];
-        if (item.type === 'lending') res = await runLendingBacktest(item.params);
-        else if (item.type === 'perp') res = await runPerpBacktest(item.params);
-        else if (item.type === 'clmm') res = await runClmmBacktest(item.params);
-      } else if (requestItems.length > 1) {
-        const batchRes = await runBatchBacktest(requestItems);
-        res = batchRes.results; // Extract results array
+        setResults(res);
+      } catch (err) {
+        console.error(err);
+        setError(err.message || "Failed to run backtest");
+      } finally {
+        setLoading(false);
       }
-
-      setResults(res);
-    } catch (err) {
-      console.error(err);
-      setError(err.message || "Failed to run backtest");
-    } finally {
-      setLoading(false);
-    }
+    });
   };
 
   if (results) {
-    return <BacktestResults results={results} onBack={() => setResults(null)} />;
-  }
-
-  if (!isAuthenticated) {
-    return (
-      <div className="flex-1 h-screen bg-gradient-to-br from-gray-50 to-blue-50 flex items-center justify-center p-8">
-        <Card className="max-w-md w-full shadow-xl">
-          <CardContent className="p-12 text-center">
-            <div className="w-20 h-20 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Wallet className="h-10 w-10 text-white" />
-            </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-3">Connect Your Wallet</h2>
-            <p className="text-gray-600 mb-6">
-              Connect your wallet to start backtesting DeFi strategies on BNB Chain
-            </p>
-            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-              <Sparkles className="h-4 w-4" />
-              <span>Powered by WalletConnect</span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
+    return <BacktestResults results={results} onBack={() => {
+        // If in history mode, onBack resets the view to empty workspace or keeps config?
+        // Let's say it keeps config but exits result view.
+        // But in history mode, we probably want to stay in read-only config view if we go back.
+        setResults(null);
+    }} />;
   }
 
   if (currentView === 'empty') {
@@ -781,7 +783,7 @@ export const Workspace = ({
           </div>
 
           {/* Run Backtest */}
-          {strategies.length > 0 && (
+          {strategies.length > 0 && !historyMode && (
             <div className="max-w-2xl pb-6 space-y-2">
               <Button
                 variant="gradient"

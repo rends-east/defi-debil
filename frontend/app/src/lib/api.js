@@ -4,10 +4,41 @@ const API_BASE_URL = 'http://localhost:8000';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
+  withCredentials: true, // Enable cookies
   headers: {
     'Content-Type': 'application/json',
   },
 });
+
+export const getNonce = async (address) => {
+  const response = await api.post('/auth/nonce', { address });
+  return response.data;
+};
+
+export const verifySignature = async (address, signature) => {
+  const response = await api.post('/auth/verify', { address, signature });
+  return response.data;
+};
+
+export const logout = async () => {
+  const response = await api.post('/auth/logout');
+  return response.data;
+};
+
+export const getMe = async () => {
+  const response = await api.get('/auth/me');
+  return response.data;
+};
+
+export const getHistory = async () => {
+  const response = await api.get('/history');
+  return response.data;
+};
+
+export const getHistoryDetail = async (id) => {
+  const response = await api.get(`/history/${id}`);
+  return response.data;
+};
 
 export const runLendingBacktest = async (data) => {
   const response = await api.post('/backtest/lending', data);

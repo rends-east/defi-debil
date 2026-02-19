@@ -5,6 +5,7 @@
   "dependencies": {
     "@web3modal/wagmi": "^3.5.0",
     "axios": "^1.13.5",
+    "canvas-confetti": "^1.9.4",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
     "framer-motion": "^12.34.2",

@@ -25,53 +25,98 @@ function App() {
   const [currentView, setCurrentView] = useState('empty');
   const [portfolio, setPortfolio] = useState([]);
   const [strategies, setStrategies] = useState([]);
+  const [historyMode, setHistoryMode] = useState(false);
+  const [historyResult, setHistoryResult] = useState(null);
 
   const handleNewBacktest = () => {
     setCurrentView('newBacktest');
     setPortfolio([]);
     setStrategies([]);
+    setHistoryMode(false);
+    setHistoryResult(null);
   };
 
+  const handleLoadHistory = (item, result) => {
+    setHistoryMode(true);
+    setHistoryResult(result);
+    
+    // Convert history item params back to strategy format
+    let newStrategies = [];
+    if (item.type === 'batch') {
+      newStrategies = item.params.items.map((batchItem, idx) => ({
+        id: `hist-${idx}`,
+        type: batchItem.type === 'clmm' ? 'cl' : batchItem.type === 'perp' ? 'perps' : 'lending',
+        asset: 'BNB', // Default
+        allocation: 0,
+        config: batchItem.params,
+        isHistory: true
+      }));
+    } else {
+       newStrategies = [{
+        id: `hist-0`,
+        type: item.type === 'clmm' ? 'cl' : item.type === 'perp' ? 'perps' : 'lending',
+        asset: 'BNB',
+        allocation: 0,
+        config: item.params,
+        isHistory: true
+      }];
+    }
+    setStrategies(newStrategies);
+    // Switch to workspace if not already
+    // Actually we just stay on currentView or ensure we render Workspace
+    // But Workspace renders strategies so this is enough
+  };
+  
   const handleAddAsset = (asset) => {
+    if (historyMode) return;
     setPortfolio(prev => [...prev, { id: genId(), asset, balance: '' }]);
   };
 
   const handleRemoveAsset = (id) => {
+    if (historyMode) return;
     setPortfolio(prev => prev.filter(a => a.id !== id));
   };
 
   const handleAssetBalanceChange = (id, balance) => {
+    if (historyMode) return;
     setPortfolio(prev => prev.map(a => a.id === id ? { ...a, balance } : a));
   };
 
   const handleAddStrategy = (type) => {
+    if (historyMode) return;
     setStrategies(prev => [...prev, { id: genId(), type, allocation: 0, asset: 'BNB', config: {}, locked: false }]);
   };
 
   const handleRemoveStrategy = (id) => {
+    if (historyMode) return;
     setStrategies(prev => prev.filter(s => s.id !== id));
   };
 
   const handleAllocationChange = (id, value) => {
+    if (historyMode) return;
     const clamped = Math.max(0, Math.min(value, 100));
     setStrategies(prev => prev.map(s => s.id === id ? { ...s, allocation: clamped } : s));
   };
 
   const handleStrategyAssetChange = (id, asset) => {
+    if (historyMode) return;
     setStrategies(prev => prev.map(s => s.id === id ? { ...s, asset } : s));
   };
 
   const handleStrategyConfigChange = (id, config) => {
+    if (historyMode) return;
     setStrategies(prev => prev.map(s => s.id === id ? { ...s, config } : s));
   };
 
   const handleToggleLock = (id) => {
+    if (historyMode) return;
     setStrategies(prev => prev.map(s => s.id === id ? { ...s, locked: !s.locked } : s));
   };
-
+  
   const handleRunBacktest = () => {
-    console.log('Running backtest:', { portfolio, strategies });
-    alert(`Running backtest with ${portfolio.length} assets and ${strategies.length} strategies!`);
+    // Override default handler from Workspace
+    // This is passed to Workspace, but Workspace also has its own handler
+    // We can remove this prop or keep it as a fallback
   };
 
   return (
@@ -83,7 +128,10 @@ function App() {
               currentView={currentView}
               portfolio={portfolio}
               strategies={strategies}
+              historyMode={historyMode}
+              historyResult={historyResult}
               onNewBacktest={handleNewBacktest}
+              onLoadHistory={handleLoadHistory}
               onAddAsset={handleAddAsset}
               onRemoveAsset={handleRemoveAsset}
               onAssetBalanceChange={handleAssetBalanceChange}

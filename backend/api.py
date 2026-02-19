@@ -18,9 +18,10 @@ from backend.lending_backtest import simulate_lending
 from backend.perp_backtest import simulate_perp
 from backend.clmm_backtest import simulate_clmm
 from backend.database import users_collection, history_collection
-from backend.auth import create_access_token, verify_signature, get_current_user
+from backend.auth import create_access_token, verify_signature, get_current_user, get_optional_user
 import secrets
 from datetime import datetime, timezone
+from typing import Optional
 
 # x402 imports
 from fastapi import HTTPException
@@ -315,17 +316,27 @@ async def get_history_detail(history_id: str, request: Request, user: dict = Dep
 
 from fastapi import Request
 
-async def check_backtest_limit_and_pay(request: Request, user: dict = Depends(get_current_user), save: bool = True):
+async def check_backtest_limit_and_pay(request: Request, user: Optional[dict] = Depends(get_optional_user), save: bool = True):
     # Skip check if we are just replaying history (save=False)
     if not save:
         return
+        
+    payment_required = False
 
     # 1. Check limit
-    count = await history_collection.count_documents({"user_address": user["address"]})
-    if count < 5:
+    if user is None:
+        # Anonymous users: ALWAYS require payment (0 free limit)
+        payment_required = True
+    else:
+        # Authenticated users: Check limit (5 free backtests)
+        count = await history_collection.count_documents({"user_address": user["address"]})
+        if count >= 5:
+            payment_required = True
+            
+    if not payment_required:
         return
         
-    # 2. Limit reached, verify payment
+    # 2. Limit reached or Anonymous, verify payment
     auth_header = request.headers.get("Authorization")
     
     # If header is present, verify it
@@ -373,7 +384,7 @@ async def check_backtest_limit_and_pay(request: Request, user: dict = Depends(ge
 async def run_lending_backtest(
     req: LendingRequest, 
     request: Request,
-    user: dict = Depends(get_current_user), 
+    user: Optional[dict] = Depends(get_optional_user), 
     save: bool = True
 ):
     # Check limit before running
@@ -451,7 +462,7 @@ async def run_lending_backtest(
             steps=final_steps
         )
         
-        if save:
+        if save and user:
             await save_history(user["address"], "lending", req.dict(), result)
             
         return result
@@ -462,10 +473,14 @@ async def run_lending_backtest(
 async def run_perp_backtest(
     req: PerpRequest, 
     request: Request,
-    user: dict = Depends(get_current_user), 
+    user: Optional[dict] = Depends(get_optional_user), 
     save: bool = True
 ):
-    print(f"DEBUG: Entering run_perp_backtest for user {user.get('address')}")
+    if user:
+        print(f"DEBUG: Entering run_perp_backtest for user {user.get('address')}")
+    else:
+        print(f"DEBUG: Entering run_perp_backtest for anonymous user")
+        
     try:
         # Check limit before running
         print("DEBUG: Checking backtest limit...")
@@ -510,7 +525,7 @@ async def run_perp_backtest(
             steps=final_steps
         )
         
-        if save:
+        if save and user:
             await save_history(user["address"], "perp", req.dict(), result)
             
         return result
@@ -521,7 +536,7 @@ async def run_perp_backtest(
 async def run_clmm_backtest(
     req: CLMMRequest, 
     request: Request,
-    user: dict = Depends(get_current_user), 
+    user: Optional[dict] = Depends(get_optional_user), 
     save: bool = True
 ):
     # Check limit before running
@@ -563,7 +578,7 @@ async def run_clmm_backtest(
             steps=final_steps
         )
         
-        if save:
+        if save and user:
             await save_history(user["address"], "clmm", req.dict(), result)
             
         return result
@@ -574,7 +589,7 @@ async def run_clmm_backtest(
 async def run_batch_backtest(
     batch: BatchRequest, 
     request: Request,
-    user: dict = Depends(get_current_user), 
+    user: Optional[dict] = Depends(get_optional_user), 
     save: bool = True
 ):
     # Check limit before running
@@ -586,15 +601,15 @@ async def run_batch_backtest(
             if item.type == "lending":
                 # Convert dict params to model
                 req = LendingRequest(**item.params)
-                res = await run_lending_backtest(req, user, save=False)
+                res = await run_lending_backtest(req, request, user, save=False)
                 results.append(res)
             elif item.type == "perp":
                 req = PerpRequest(**item.params)
-                res = await run_perp_backtest(req, user, save=False)
+                res = await run_perp_backtest(req, request, user, save=False)
                 results.append(res)
             elif item.type == "clmm":
                 req = CLMMRequest(**item.params)
-                res = await run_clmm_backtest(req, user, save=False)
+                res = await run_clmm_backtest(req, request, user, save=False)
                 results.append(res)
             else:
                 # Add empty result or error placeholder
@@ -619,7 +634,7 @@ async def run_batch_backtest(
     roi = (total_pnl / total_initial * 100) if total_initial != 0 else 0
     apy = sum(r.summary.apy_percentage for r in results) / len(results) if results else 0
     
-    if save:
+    if save and user:
         # Save as a single batch entry
         summary = BacktestSummary(
             final_pnl_usd=total_pnl,

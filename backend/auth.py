@@ -60,13 +60,32 @@ async def get_current_user(request: Request):
     if not token:
         raise HTTPException(status_code=401, detail="Not authenticated")
     
-    payload = decode_access_token(token)
-    address = payload.get("sub")
-    if not address:
-        raise HTTPException(status_code=401, detail="Invalid token payload")
-        
-    user = await users_collection.find_one({"address": address})
-    if not user:
-        raise HTTPException(status_code=401, detail="User not found")
-        
-    return user
+    try:
+        payload = decode_access_token(token)
+        address = payload.get("sub")
+        if not address:
+            raise HTTPException(status_code=401, detail="Invalid token")
+            
+        user = await users_collection.find_one({"address": address})
+        if not user:
+            raise HTTPException(status_code=401, detail="User not found")
+            
+        return user
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=str(e))
+
+async def get_optional_user(request: Request):
+    token = request.cookies.get("access_token")
+    if not token:
+        return None
+    
+    try:
+        payload = decode_access_token(token)
+        address = payload.get("sub")
+        if not address:
+            return None
+            
+        user = await users_collection.find_one({"address": address})
+        return user
+    except Exception:
+        return None

@@ -1,10 +1,15 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:8000';
+// Dynamically determine the API base URL
+// In development (localhost), use localhost:8000
+// In production (docker/traefik), use https://api.debil.capital
+const API_BASE_URL = window.location.hostname === 'localhost' 
+  ? 'http://localhost:8000' 
+  : 'https://api.debil.capital';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  withCredentials: true, // Enable cookies
+  withCredentials: true, // Important for cookies (JWT)
   headers: {
     'Content-Type': 'application/json',
   },
@@ -60,10 +65,4 @@ export const runBatchBacktest = async (items) => {
   return response.data;
 };
 
-// Helper to format error messages
-export const getErrorMessage = (error) => {
-  if (error.response) {
-    return error.response.data.detail || 'Server error occurred';
-  }
-  return error.message || 'Network error occurred';
-};
+export default api;

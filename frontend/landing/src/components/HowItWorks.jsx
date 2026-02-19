@@ -5,7 +5,15 @@ const HowItWorks = () => {
     {
       number: '01',
       title: 'Select Strategy',
-      description: 'Choose from lending, yield farming, or have your OpenClaw 🦞 agent auto-select. Pick your protocol and time range.',
+      description: (
+        <>
+          Choose from lending, yield farming, or have your{' '}
+          <a href="/llms.txt" target="_blank" className="text-blue-600 hover:underline">
+            OpenClaw 🦞
+          </a>{' '}
+          agent auto-select. Pick your protocol and time range.
+        </>
+      ),
       features: ['Venus Lending', 'PancakeSwap LP', 'OpenClaw Compatible', 'Aster Perps'],
       mockup: (
         <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl p-6 h-48 flex flex-col justify-center">

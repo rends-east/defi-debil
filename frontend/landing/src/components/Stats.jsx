@@ -34,7 +34,14 @@ const Stats = () => {
     },
     {
       number: '50+',
-      label: 'Beta users (2 real humans and 50 AI Agents)',
+      label: (
+        <>
+          Beta users (2 real humans and{' '}
+          <a href="/llms.txt" target="_blank" className="underline hover:text-blue-200">
+            50 AI Agents
+          </a>)
+        </>
+      ),
       description: 'Testing the platform',
       icon: (
         <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">

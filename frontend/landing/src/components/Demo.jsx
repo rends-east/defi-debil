@@ -67,7 +67,9 @@ const Demo = () => {
             <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight">
               Ready to Validate Your
               <br />
-              AI Agent Strategy? 🦞
+              <a href="/llms.txt" target="_blank" className="hover:text-blue-200 transition-colors decoration-dotted underline">
+                AI Agent Strategy? 🦞
+              </a>
             </h2>
 
             {/* Description */}

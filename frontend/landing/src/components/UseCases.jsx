@@ -39,6 +39,7 @@ const UseCases = () => {
     {
       title: 'AI Agent Developers',
       description: 'Build autonomous agents with OpenClaw 🦞 and x402 support.',
+      link: '/skills/defi-debil-backtest/SKILL.md',
       benefits: [
         'Automated backtesting via API',
         'x402 standard compliance',
@@ -116,12 +117,16 @@ const UseCases = () => {
                 </div>
 
                 {/* Learn More Link */}
-                <button className="mt-6 inline-flex items-center text-sm font-semibold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                <a 
+                  href={useCase.link || '#'}
+                  target={useCase.link ? "_blank" : "_self"}
+                  className="mt-6 inline-flex items-center text-sm font-semibold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                >
                   Learn more
                   <svg className="w-4 h-4 ml-2 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
-                </button>
+                </a>
               </div>
             </div>
           ))}

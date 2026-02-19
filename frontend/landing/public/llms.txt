@@ -1,0 +1,59 @@
+# DeFi Debil Backtest API
+
+## Overview
+This is a high-performance crypto backtesting API supporting Lending, Perps, and CLMM strategies on BNB Chain.
+It features an x402 payment wall for anonymous access (free tier for authenticated users).
+
+## Base URL
+- Local: `http://localhost:8000`
+- Production: `https://api.debil.capital`
+
+## Authentication & Payments
+- **Authenticated Users**: Login via SIWE (Session Cookie). First 5 backtests are free.
+- **Anonymous Agents**: Can call APIs directly but MUST pay per request.
+- **Protocol**: x402 (Payment Required)
+  - If you receive `402 Payment Required`, read the `WWW-Authenticate` header.
+  - Header Format: `x402 scheme="exact", price="0.01", token="0x...", network="eip155:56", payTo="..."`
+  - Action: Send the specified amount (USDT on BSC) to `payTo`.
+  - Retry: Call the endpoint again with header `Authorization: x402 <tx_hash>`.
+
+## Endpoints
+
+### 1. Lending Backtest
+- **POST** `/backtest/lending`
+- **Body**:
+  ```json
+  {
+    "supply_amount": 1000,
+    "borrow_amount": 500,
+    "is_bnb_supply": true
+  }
+  ```
+
+### 2. Perp Backtest
+- **POST** `/backtest/perp`
+- **Body**:
+  ```json
+  {
+    "initial_collateral": 1000,
+    "leverage": 5,
+    "is_long": true
+  }
+  ```
+
+### 3. CLMM Backtest
+- **POST** `/backtest/clmm`
+- **Body**:
+  ```json
+  {
+    "initial_token0": 1.0,
+    "initial_token1": 300.0,
+    "min_price": 250.0,
+    "max_price": 350.0
+  }
+  ```
+
+## Tools Required
+- **HTTP Client**: `curl` or similar.
+- **Crypto Wallet**: Ability to sign/send transactions on BSC Mainnet (Chain ID 56).
+- **Token**: USDС (0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d).

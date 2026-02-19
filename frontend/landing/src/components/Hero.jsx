@@ -23,7 +23,10 @@ const Hero = () => {
           {/* Badge */}
           <span className="inline-flex items-center px-4 py-2 rounded-full bg-white bg-opacity-20 text-white text-sm font-medium backdrop-blur-sm mb-8">
             <span className="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse"></span>
-            Built for BNB Chain & AI Agents 🦞
+            Built for BNB Chain &{' '}
+            <a href="/llms.txt" target="_blank" className="hover:underline hover:text-green-300 ml-1 transition-colors">
+              AI Agents 🦞
+            </a>
           </span>
         </div>
 
@@ -32,14 +35,20 @@ const Hero = () => {
           Backtest DeFi Strategies
           <br />
           <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-200 to-purple-200">
-            for Humans & AI Agents
+            for Humans &{' '}
+            <a href="/skills/defi-debil-backtest/SKILL.md" target="_blank" className="hover:text-white underline decoration-dotted transition-colors">
+              AI Agents
+            </a>
           </span>
         </h1>
 
         {/* Subheadline */}
         <p className="text-xl md:text-2xl text-blue-100 mb-12 max-w-3xl mx-auto leading-relaxed">
           Unified analytics platform with aggregated historical data. 
-          Perfect for manual backtesting and autonomous agents like <strong>OpenClaw 🦞</strong>.
+          Perfect for manual backtesting and autonomous agents like{' '}
+          <a href="/llms.txt" target="_blank" className="font-bold hover:text-white underline decoration-dotted transition-colors">
+            OpenClaw 🦞
+          </a>.
           <br />
           Full support for <strong>x402</strong> standard.
         </p>

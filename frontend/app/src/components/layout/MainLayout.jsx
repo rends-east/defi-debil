@@ -20,12 +20,14 @@ export const MainLayout = ({
   historyMode,
   historyResult,
   onLoadHistory,
+  workspaceKey,
 }) => {
   return (
     <div className="flex flex-col md:flex-row h-screen overflow-hidden">
       <Sidebar onNewBacktest={onNewBacktest} onLoadHistory={onLoadHistory} />
       <div className="flex-1 h-full overflow-hidden relative">
         <Workspace
+          key={workspaceKey}
           currentView={currentView}
           portfolio={portfolio}
           strategies={strategies}

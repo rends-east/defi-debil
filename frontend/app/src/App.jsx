@@ -30,6 +30,7 @@ function App() {
   const [strategies, setStrategies] = useState([]);
   const [historyMode, setHistoryMode] = useState(false);
   const [historyResult, setHistoryResult] = useState(null);
+  const [workspaceKey, setWorkspaceKey] = useState(0);
   
   // Payment Modal State
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
@@ -69,6 +70,7 @@ function App() {
     setStrategies([]);
     setHistoryMode(false);
     setHistoryResult(null);
+    setWorkspaceKey(prev => prev + 1);
   };
 
   const handleLoadHistory = (item, result) => {
@@ -160,6 +162,7 @@ function App() {
         <Router>
           <div className="App">
             <MainLayout
+              workspaceKey={workspaceKey}
               currentView={currentView}
               portfolio={portfolio}
               strategies={strategies}

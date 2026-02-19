@@ -4,7 +4,7 @@ import { X, Wallet, Loader2, CheckCircle2, AlertCircle, Network } from 'lucide-r
 import { Button } from '../ui/button';
 import { useAccount, useSendTransaction, useWaitForTransaction, useContractWrite, useNetwork, useSwitchNetwork } from 'wagmi';
 import { parseEther, parseUnits } from 'viem';
-import { baseSepolia } from 'wagmi/chains';
+import { bsc } from 'wagmi/chains';
 
 export const PaymentModal = ({ isOpen, onClose, paymentDetails, onPaymentSuccess }) => {
   const { address, isConnected } = useAccount();
@@ -33,44 +33,48 @@ export const PaymentModal = ({ isOpen, onClose, paymentDetails, onPaymentSuccess
   
   const { write: payUSDC, isLoading: isWriting, isSuccess: isWriteSuccess, data: writeData, error: writeError } = 
     useContractWrite({
-      chainId: baseSepolia.id, // Enforce Base Sepolia
+      chainId: bsc.id, // Enforce BSC Mainnet
       address: paymentDetails?.token,
       abi: ERC20_ABI,
       functionName: 'transfer',
     });
 
   // 2. Determine active hash
-  const txHash = hash?.hash || writeData?.hash;
+  // txHash is already defined above
 
   // 3. Wait for Transaction
   const { isLoading: isWaiting, isSuccess: isConfirmed } = useWaitForTransaction({
-    hash: txHash,
+    hash: hash?.hash || writeData?.hash,
   });
 
-  const isCorrectChain = chain?.id === baseSepolia.id;
+  const isCorrectChain = chain?.id === bsc.id;
 
   // Effect to handle success
   useEffect(() => {
+    const txHash = hash?.hash || writeData?.hash;
     if (isConfirmed && txHash) {
       // Small delay to show success animation
       setTimeout(() => {
         onPaymentSuccess(txHash);
       }, 1500);
     }
-  }, [isConfirmed, txHash, onPaymentSuccess]);
-    
+  }, [isConfirmed, hash, writeData, onPaymentSuccess]);
+     
   const handlePayUSDC = () => {
       if (!paymentDetails) return;
       
       if (!isCorrectChain) {
-        switchNetwork?.(baseSepolia.id);
+        switchNetwork?.(bsc.id);
         return;
       }
 
-      // 0.01 USDC (6 decimals usually, or 18?)
-      // Base USDC is 6 decimals.
-      // 0.01 * 10^6 = 10000
-      const amount = parseUnits(String(paymentDetails.price), 6); 
+      // 0.01 USDT (18 decimals usually on BSC for BUSD/USDT-BEP20? Check decimals!)
+      // BSC-USD (USDT) has 18 decimals usually? No, USDT on Ethereum is 6, but BSC-USD is a pegged token.
+      // BSC-USD (0x55d3...) has 18 decimals!
+      // BE CAREFUL: USDC on BSC (0x8AC7...) also has 18 decimals.
+      // So we should use 18 decimals here for BSC tokens usually.
+      // Let's assume 18 decimals for BSC standard stablecoins.
+      const amount = parseUnits(String(paymentDetails.price), 18); 
       
       payUSDC({
           args: [paymentDetails.payTo, amount]
@@ -79,8 +83,7 @@ export const PaymentModal = ({ isOpen, onClose, paymentDetails, onPaymentSuccess
   
   const error = sendError || writeError;
   const isLoading = isSending || isWriting || isWaiting || isSwitching;
-  // txHash is already defined above
-
+  
   // Use wagmi hook imports
   // Note: I need to update imports above to include useContractWrite
   
@@ -95,7 +98,7 @@ export const PaymentModal = ({ isOpen, onClose, paymentDetails, onPaymentSuccess
             className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden"
           >
             {/* Header with cool gradient */}
-            <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-6 text-white text-center">
+            <div className="bg-gradient-to-r from-yellow-500 to-orange-500 p-6 text-white text-center">
               <motion.div 
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
@@ -105,7 +108,7 @@ export const PaymentModal = ({ isOpen, onClose, paymentDetails, onPaymentSuccess
                 💎
               </motion.div>
               <h2 className="text-2xl font-bold mb-1">Premium Feature</h2>
-              <p className="text-blue-100 text-sm">Unlock more backtests</p>
+              <p className="text-yellow-100 text-sm">Unlock more backtests</p>
             </div>
 
             <div className="p-6">
@@ -113,19 +116,19 @@ export const PaymentModal = ({ isOpen, onClose, paymentDetails, onPaymentSuccess
                 <p className="text-gray-600 mb-2">
                   You've reached your free limit of 5 backtests.
                 </p>
-                <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-full font-bold text-lg">
+                <div className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-50 text-yellow-700 rounded-full font-bold text-lg">
                   <span>Pay</span>
                   <span className="text-2xl">0.01</span>
                   <span>USDC</span>
                 </div>
                 <div className="mt-2 text-xs text-gray-400">
-                  on Base Sepolia Testnet
+                  on BNB Smart Chain
                 </div>
               </div>
 
               {/* Status Messages */}
               {isLoading ? (
-                <div className="flex flex-col items-center justify-center py-4 text-blue-600">
+                <div className="flex flex-col items-center justify-center py-4 text-yellow-600">
                   <Loader2 className="w-8 h-8 animate-spin mb-2" />
                   <p>
                     {isSwitching ? "Switching Network..." : 
@@ -149,12 +152,12 @@ export const PaymentModal = ({ isOpen, onClose, paymentDetails, onPaymentSuccess
               ) : (
                 <Button 
                   onClick={handlePayUSDC} 
-                  className="w-full h-12 text-lg bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg shadow-blue-500/25 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                  className="w-full h-12 text-lg bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 shadow-lg shadow-yellow-500/25 transition-all hover:scale-[1.02] active:scale-[0.98]"
                 >
                   {!isCorrectChain ? (
                     <>
                       <Network className="w-5 h-5 mr-2" />
-                      Switch to Base Sepolia
+                      Switch to BNB Chain
                     </>
                   ) : (
                     <>

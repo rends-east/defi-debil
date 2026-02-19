@@ -52,8 +52,8 @@ class PaymentRequiredException(HTTPException):
 app = FastAPI(title="DeFi Debil Backtest API")
 
 # Configure x402
-# Use the testnet facilitator for now
-FACILITATOR_CLIENT = HTTPFacilitatorClient(FacilitatorConfig(url="https://x402.org/facilitator"))
+# Use the Unibase V2 facilitator for BSC Mainnet
+FACILITATOR_CLIENT = HTTPFacilitatorClient(FacilitatorConfig(url="https://api.x402.unibase.com/v2"))
 # Use the correct class name from the library
 RESOURCE_SERVER = x402ResourceServer(FACILITATOR_CLIENT)
 # Register the scheme
@@ -65,10 +65,10 @@ PAYMENT_CONFIG = {
     "accepts": [
         {
             "scheme": "exact",
-            "price": "0.01",  # USDC amount
-            "token": "0x036CbD53842c5426634e7929541eC2318f3dCF7e", # USDC on Base Sepolia
-            "network": "eip155:84532", # Base Sepolia
-            "payTo": "0x21C8A4C539941577A69543a8b0863f7c33D87060", # Replace with your wallet!
+            "price": "0.01",  # Amount (e.g. USDT)
+            "token": "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d", # USDC on BSC Mainnet
+            "network": "eip155:56", # BSC Mainnet
+            "payTo": "0xFEdB11BB6E59362852f151D7Cf07c59677831c90", # Replace with your wallet!
         }
     ],
     "description": "Backtest Execution Fee",

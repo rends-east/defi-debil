@@ -1,13 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router } from 'react-router-dom';
 import { WagmiConfig } from 'wagmi';
-import { bsc } from 'wagmi/chains';
+import { bsc, baseSepolia } from 'wagmi/chains';
 import { createWeb3Modal, defaultWagmiConfig } from '@web3modal/wagmi/react';
 import { AuthProvider } from './context/AuthContext';
 import { MainLayout } from './components/layout/MainLayout';
+import { PaymentModal } from './components/ui/PaymentModal';
+import { setPaymentModalCallback } from './lib/api';
 
 const projectId = '5518cc59861565dc6d026aa16de35521';
 
+// ... (keep metadata and config) ...
 const metadata = {
   name: 'DeFi Debil',
   description: 'Crypto Backtesting Platform for BNB Chain',
@@ -15,8 +18,8 @@ const metadata = {
   icons: ['https://avatars.githubusercontent.com/u/37784886']
 };
 
-const wagmiConfig = defaultWagmiConfig({ chains: [bsc], projectId, metadata });
-createWeb3Modal({ wagmiConfig, projectId, chains: [bsc] });
+const wagmiConfig = defaultWagmiConfig({ chains: [bsc, baseSepolia], projectId, metadata });
+createWeb3Modal({ wagmiConfig, projectId, chains: [bsc, baseSepolia] });
 
 let _nextId = 1;
 const genId = () => _nextId++;
@@ -27,6 +30,38 @@ function App() {
   const [strategies, setStrategies] = useState([]);
   const [historyMode, setHistoryMode] = useState(false);
   const [historyResult, setHistoryResult] = useState(null);
+  
+  // Payment Modal State
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [paymentDetails, setPaymentDetails] = useState(null);
+  const [paymentResolver, setPaymentResolver] = useState(null);
+
+  // Setup payment callback
+  useEffect(() => {
+    setPaymentModalCallback((details) => {
+      setPaymentDetails(details);
+      setIsPaymentModalOpen(true);
+      return new Promise((resolve, reject) => {
+        setPaymentResolver({ resolve, reject });
+      });
+    });
+  }, []);
+
+  const handlePaymentSuccess = (txHash) => {
+    setIsPaymentModalOpen(false);
+    if (paymentResolver) {
+      paymentResolver.resolve(txHash);
+      setPaymentResolver(null);
+    }
+  };
+
+  const handlePaymentClose = () => {
+    setIsPaymentModalOpen(false);
+    if (paymentResolver) {
+      paymentResolver.reject(new Error("Payment cancelled by user"));
+      setPaymentResolver(null);
+    }
+  };
 
   const handleNewBacktest = () => {
     setCurrentView('newBacktest');
@@ -142,6 +177,12 @@ function App() {
               onStrategyConfigChange={handleStrategyConfigChange}
               onToggleLock={handleToggleLock}
               onRunBacktest={handleRunBacktest}
+            />
+            <PaymentModal 
+              isOpen={isPaymentModalOpen}
+              onClose={handlePaymentClose}
+              paymentDetails={paymentDetails}
+              onPaymentSuccess={handlePaymentSuccess}
             />
           </div>
         </Router>

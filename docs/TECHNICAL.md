@@ -38,7 +38,7 @@ flowchart TB
 
 ### Prerequisites
 - **Node.js 18+**
-- **Python 3.10+**
+- **Python 3.13+**
 - **Docker & Docker Compose** (optional, for containerized deployment)
 - **MongoDB** (local instance or remote connection string)
 

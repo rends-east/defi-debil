@@ -36,11 +36,75 @@ flowchart TB
 
 ## 2. Setup & Run
 
-- **Prerequisites** — Required tools, versions, accounts (e.g. Node 18+, MetaMask, testnet faucet).
-- **Environment** — Env vars, API keys, endpoints (use `.env.example` if needed).
-- **Install & build** — Commands to install dependencies and build.
-- **Run** — How to start each part (e.g. backend, contracts, frontend) and in what order.
-- **Verify** — How to confirm it works (e.g. tests, open URL, run a script).
+### Prerequisites
+- **Node.js 18+**
+- **Python 3.10+**
+- **Docker & Docker Compose** (optional, for containerized deployment)
+- **MongoDB** (local instance or remote connection string)
+
+### Environment Configuration
+1. Copy `.env.example` to `.env` in the project root:
+   ```bash
+   cp .env.example .env
+   ```
+2. Configure the following parameters in `.env`:
+   - `ACME_EMAIL`: Email address for Let's Encrypt SSL certificate generation (Traefik).
+   - `MONGO_INITDB_ROOT_USERNAME`: Root username for MongoDB initialization.
+   - `MONGO_INITDB_ROOT_PASSWORD`: Root password for MongoDB.
+   - `DB_NAME`: Name of the database to use (e.g., `defi_debil`).
+   - `JWT_SECRET`: Secret key used for signing authentication JWTs.
+
+### Data Preparation
+The backtesting engine requires historical data files. Ensure the following files are placed in the `data/` directory:
+- `data/perps/bnb-klines.csv`: Historical BNB price data (K-lines).
+- `data/clmm/processed_liquidity.pkl`: Processed liquidity snapshots for CLMM.
+- `data/lending/bnb_history.csv`: Utilization data for BNB on Venus lending.
+- `data/lending/usdc_history.csv`: Utilization data for BNB on Venus lending.
+
+### Option 1: Local Development (Manual)
+
+#### Backend (API)
+1. Navigate to the `backend` directory:
+   ```bash
+   cd backend
+   ```
+2. Install Python dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. Start the API server with auto-reload:
+   ```bash
+   uvicorn api:app --reload
+   ```
+   The backend will be available at `http://localhost:8000`.
+
+#### Frontend (App)
+1. Navigate to the `frontend/app` directory:
+   ```bash
+   cd frontend/app
+   ```
+2. Install Node dependencies:
+   ```bash
+   npm install
+   ```
+3. Start the development server:
+   ```bash
+   npm start
+   ```
+   The application will be available at `http://localhost:3000`.
+
+### Option 2: Docker Compose
+To run the full stack (Traefik, MongoDB, Backend, Frontend, Landing) in containers:
+
+1. Build and start the services:
+   ```bash
+   docker-compose up --build -d
+   ```
+2. Verify the services are running:
+   - **Landing Page**: `http://your_domain` (or configured domain)
+   - **App**: `http://app.your_domain` (via Traefik routing)
+   - **API**: `http://api.your_domain` (via Traefik routing)
+<b>You will need to have a spare domain name to setup Trefik from docker compose<b>
 
 ---
 
@@ -84,6 +148,18 @@ This section is a **minimal technical navigator**: where to look in the code to 
   - PnL, equity, and liquidation logic for BNB/USDT perps: `backend/perp_backtest.py` (1–16, 27–33, 49–147).  
   - API wrapper and final PnL/ROI/APY summary: `/backtest/perp` in `backend/api.py` (495–555).
 
-- **LLM prompts & skills (upcoming)**  
-  - System prompts and LLM wiring: `lllm.txt` (will be added to the repo root).  
-  - AI skills and agent capabilities: `SKILLS.md` (will document how external agents can safely drive the backtesting engine).
+- **Batch Requests**
+  - Endpoint: `/backtest/batch`
+  - Implementation: `backend/api.py` (see `run_batch_backtest`).
+  - Allows combining multiple strategies (Lending, Perp, CLMM) into a single execution request. It returns an aggregated summary of all sub-strategies.
+
+- **LLM & AI Agent Integration**
+  - **`llms.txt`**: Standardized project context for LLMs.
+    - URL: `https://debil.capital/llms.txt`
+  - **`SKILL.md`**: Machine-readable skill definition for AI agents (e.g., OpenClaw).
+    - URL: `https://debil.capital/skills/defi-debil-backtest/SKILL.md`
+  - **Discovery**: Links to these files are embedded in the Landing Page HTML `<head>` for automatic discovery by AI agents:
+    ```html
+    <link rel="llms-txt" href="/llms.txt" />
+    <link rel="skill" href="/skills/defi-debil-backtest/SKILL.md" />
+    ```

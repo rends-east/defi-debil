@@ -40,10 +40,10 @@ const MetricCard = ({ title, value, subValue, icon: Icon, trend }) => (
         <div className={`p-3 rounded-xl ${trend === 'up' ? 'bg-emerald-50 text-emerald-600' : trend === 'down' ? 'bg-rose-50 text-rose-600' : 'bg-blue-50 text-blue-600'}`}>
           <Icon className="w-6 h-6" />
         </div>
-        {trend && (
+        {trend !== 'neutral' && (
           <Badge variant="outline" className={`${trend === 'up' ? 'text-emerald-600 bg-emerald-50 border-emerald-200' : 'text-rose-600 bg-rose-50 border-rose-200'}`}>
-            {trend === 'up' ? <TrendingUp className="w-3 h-3 mr-1" /> : <TrendingDown className="w-3 h-3 mr-1" />}
-            {trend === 'up' ? 'Profitable' : 'Loss'}
+{trend === 'up' ? <TrendingUp className="w-3 h-3 mr-1" /> : trend === 'down' ? <TrendingDown className="w-3 h-3 mr-1" /> : null}
+            {trend === 'up' ? 'Profitable' : trend === 'down' ? 'Loss' : ''}
           </Badge>
         )}
       </div>
@@ -209,7 +209,7 @@ export const BacktestResults = ({ results, onBack }) => {
               value={fmtUSD(aggregateStats.final)} 
               subValue={`Initial: ${fmtUSD(aggregateStats.initial)}`}
               icon={Layers}
-              trend="neutral"
+              trend={aggregateStats.pnl >= 0 ? 'up' : 'down'}
             />
           </motion.div>
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
@@ -218,12 +218,12 @@ export const BacktestResults = ({ results, onBack }) => {
               value={fmtPct(aggregateStats.apy)} 
               subValue="Annualized based on duration"
               icon={Activity}
-              trend="up"
+              trend={aggregateStats.pnl >= 0 ? 'up' : 'down'}
             />
           </motion.div>
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
             <MetricCard 
-              title="Strategies" 
+              title="Sub-Strategies" 
               value={data.length.toString()} 
               subValue="Active Positions"
               icon={PieChart}
@@ -259,7 +259,7 @@ export const BacktestResults = ({ results, onBack }) => {
                   onClick={() => setSelectedTab(idx)}
                   className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap ${selectedTab === idx ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
                 >
-                  Strategy {idx + 1}
+                  Sub-Strategy {idx + 1}
                 </button>
               ))}
             </div>
@@ -345,7 +345,7 @@ export const BacktestResults = ({ results, onBack }) => {
 
         {/* Individual Strategy Breakdown */}
         <div className="space-y-4 pb-12">
-            <h2 className="text-lg font-bold text-gray-900 px-1">Strategy Breakdown</h2>
+            <h2 className="text-lg font-bold text-gray-900 px-1">Sub-Strategies Breakdown</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                 {data.map((res, idx) => (
                     <motion.div 
@@ -357,7 +357,7 @@ export const BacktestResults = ({ results, onBack }) => {
                         <Card className="border-gray-200 hover:border-blue-300 transition-colors cursor-pointer group">
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                 <CardTitle className="text-sm font-medium text-gray-500">
-                                    Strategy #{idx + 1}
+                                    Sub-Strategy #{idx + 1}
                                 </CardTitle>
                                 <Badge variant="secondary" className="bg-gray-100 text-gray-600 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
                                     {fmtPct(res.summary.roi_percentage)} ROI

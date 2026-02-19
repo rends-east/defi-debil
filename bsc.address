@@ -1,21 +1,27 @@
 {
-  "projectName": "<Your Project Name>",
-  "network": "BSC Testnet",
+  "projectName": "DeFi Debil",
+  "network": "BSC Mainnet",
   "contracts": [
     {
-      "name": "ExampleToken",
-      "address": "0x123...",
-      "explorerLink": "https://testnet.bscscan.com/address/...",
-      "description": "Governance token"
+      "name": "vBNB Venus token",
+      "address": "0xA07c5b74C9B40447a954e1466938b865b6BBea36",
+      "explorerLink": "https://bscscan.com/address/0xA07c5b74C9B40447a954e1466938b865b6BBea36",
+      "description": "vToken used for supplying and borrowing BNB on Venus Protocol"
     },
     {
-      "name": "ExampleVault",
-      "address": "0xabc...",
-      "explorerLink": "https://testnet.bscscan.com/address/...",
-      "description": "Staking vault"
-    }
+      "name": "vUSDC Venus token",
+      "address": "0xecA88125a5ADbe82614ffC12D0DB554E2e2867C8",
+      "explorerLink": "https://bscscan.com/address/0xecA88125a5ADbe82614ffC12D0DB554E2e2867C8",
+      "description": "vToken used for supplying and borrowing USDC on Venus Protocol"
+    },
+    {
+      "name": "USDC/BNB PancakeSwap Pool",
+      "address": "0xf2688Fb5B81049DFB7703aDa5e770543770612C4",
+      "explorerLink": "https://bscscan.com/address/0xf2688Fb5B81049DFB7703aDa5e770543770612C4",
+      "description": "Contract that stores information about ticks in the USDC/BNB pool."
+    },
   ],
-  "frontendUrl": "https://...",
-  "backendApi": "https://...",
-  "notes": "Any special instructions for interacting with the contracts."
+  "frontendUrl": "https://debil.capital",
+  "backendApi": "https://api.debil.capital",
+  "notes": ""
 }

@@ -4,7 +4,6 @@ FROM python:3.11-slim
 # Install system dependencies required for OpenCV and other packages
 RUN apt-get update --fix-missing && apt-get install -y --no-install-recommends \
     build-essential \
-    libgl1-mesa-glx \
     libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 

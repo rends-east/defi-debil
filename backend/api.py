@@ -3,23 +3,48 @@ FastAPI Backend for DeFi Debil Backtesting.
 """
 from typing import List, Union, Literal, Optional, Any
 from pydantic import BaseModel, Field
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends, Response
+from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import math
-
-# Import existing backtest functions
-# We need to make sure the imports work from the root directory
 import sys
 from pathlib import Path
+import secrets
+
+# Add project root to sys path
 sys.path.append(str(Path(__file__).parent.parent))
 
 from backend.lending_backtest import simulate_lending
 from backend.perp_backtest import simulate_perp
 from backend.clmm_backtest import simulate_clmm
+from backend.database import users_collection, history_collection
+from backend.auth import create_access_token, verify_signature, get_current_user
+import secrets
+from datetime import datetime, timezone
 
 app = FastAPI(title="DeFi Debil Backtest API")
 
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",
+        "https://debil.capital",
+        "https://www.debil.capital"
+    ], 
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # --- Models ---
+
+class NonceRequest(BaseModel):
+    address: str
+
+class VerifyRequest(BaseModel):
+    address: str
+    signature: str
 
 class LendingRequest(BaseModel):
     supply_amount: float = Field(..., description="Initial amount to supply (in BNB or USDC)")
@@ -59,6 +84,13 @@ class BatchResponse(BaseModel):
 class BatchRequest(BaseModel):
     items: List[BatchRequestItem]
 
+class HistoryItem(BaseModel):
+    id: str
+    type: str
+    params: Any
+    summary: BacktestSummary
+    timestamp: datetime
+
 # --- Helpers ---
 
 def calculate_apy(roi_pct: float, duration_days: float) -> float:
@@ -90,10 +122,144 @@ def downsample_steps(steps: List[Any], target_count: int = 500) -> List[Any]:
         
     return downsampled
 
-# --- Endpoints ---
+# --- Auth Endpoints ---
+
+@app.post("/auth/nonce")
+async def get_nonce(req: NonceRequest):
+    nonce = secrets.token_hex(16)
+    # Store nonce in DB associated with address
+    # Upsert: if user exists update nonce, else create
+    await users_collection.update_one(
+        {"address": req.address},
+        {"$set": {"nonce": nonce, "address": req.address}},
+        upsert=True
+    )
+    return {"nonce": nonce}
+
+@app.post("/auth/verify")
+async def verify(req: VerifyRequest, response: Response):
+    # 1. Get user from DB
+    user = await users_collection.find_one({"address": req.address})
+    if not user or "nonce" not in user:
+        raise HTTPException(status_code=400, detail="Nonce not found. Please request nonce first.")
+    
+    nonce = user["nonce"]
+    
+    # 2. Verify signature
+    # Reconstruct the message that was signed on frontend
+    # "Sign this message to log in to DeFi Debil: <nonce>"
+    message = f"Sign this message to log in to DeFi Debil: {nonce}"
+    
+    # We use web3 to recover address from signature
+    from eth_account.messages import encode_defunct
+    from web3 import Web3
+    
+    w3 = Web3()
+    try:
+        encoded_message = encode_defunct(text=message)
+        recovered_address = w3.eth.account.recover_message(encoded_message, signature=req.signature)
+    except Exception as e:
+         raise HTTPException(status_code=400, detail=f"Invalid signature format: {e}")
+
+    if recovered_address.lower() != req.address.lower():
+        raise HTTPException(status_code=401, detail="Signature verification failed")
+        
+    # 3. Generate JWT
+    access_token = create_access_token(data={"sub": req.address})
+    
+    # 4. Set HttpOnly Cookie
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=False, # Set True in production (HTTPS)
+        samesite="lax",
+        max_age=60 * 60 * 24 # 1 day
+    )
+    
+    return {"status": "success", "address": req.address}
+
+@app.post("/auth/logout")
+async def logout(response: Response):
+    response.delete_cookie("access_token")
+    return {"status": "success"}
+
+
+@app.get("/auth/me")
+async def get_me(user: dict = Depends(get_current_user)):
+    return {"address": user["address"]}
+
+# --- History Endpoints ---
+
+@app.get("/history", response_model=List[HistoryItem])
+async def get_history(user: dict = Depends(get_current_user)):
+    cursor = history_collection.find({"user_address": user["address"]}).sort("timestamp", -1).limit(50)
+    history = []
+    async for doc in cursor:
+        history.append(HistoryItem(
+            id=str(doc["_id"]),
+            type=doc["type"],
+            params=doc["params"],
+            summary=doc["summary"],
+            timestamp=doc["timestamp"]
+        ))
+    return history
+
+@app.get("/history/{history_id}", response_model=Union[BacktestResult, BatchResponse])
+async def get_history_detail(history_id: str, user: dict = Depends(get_current_user)):
+    from bson import ObjectId
+    try:
+        doc = await history_collection.find_one({"_id": ObjectId(history_id), "user_address": user["address"]})
+        if not doc:
+            raise HTTPException(status_code=404, detail="History not found")
+        
+        # If we stored full result, return it.
+        # But we currently only store summary and params to save space.
+        # So we need to RE-RUN the backtest with stored params.
+        # This ensures we always get the full steps without bloating DB.
+        
+        type = doc["type"]
+        params = doc["params"]
+        
+        if type == "lending":
+            req = LendingRequest(**params)
+            return await run_lending_backtest(req, user, save=False)
+        elif type == "perp":
+            req = PerpRequest(**params)
+            return await run_perp_backtest(req, user, save=False)
+        elif type == "clmm":
+            req = CLMMRequest(**params)
+            return await run_clmm_backtest(req, user, save=False)
+        elif type == "batch":
+            # For batch, we need to reconstruct the batch request
+            # This is complex because run_batch returns BatchResponse, not BacktestResult
+            # We might need to adjust the response model or handle batch differently
+            # For now, let's just re-run batch
+            req = BatchRequest(**params)
+            # We need to call run_batch_backtest but it returns BatchResponse
+            # The frontend expects BacktestResult (singular) for the chart?
+            # Actually, the frontend handles batch results array.
+            # But this endpoint is typed as BacktestResult...
+            # Let's support batch re-run by calling the batch endpoint logic
+            return await run_batch_backtest(req, user, save=False)
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# --- Backtest Endpoints (Protected) ---
+
+async def save_history(user_address: str, type: str, params: dict, result: BacktestResult):
+    await history_collection.insert_one({
+        "user_address": user_address,
+        "type": type,
+        "params": params,
+        "summary": result.summary.dict(),
+        "timestamp": datetime.now(timezone.utc)
+    })
 
 @app.post("/backtest/lending", response_model=BacktestResult)
-def run_lending_backtest(req: LendingRequest):
+async def run_lending_backtest(req: LendingRequest, user: dict = Depends(get_current_user), save: bool = True):
     try:
         steps = simulate_lending(req.supply_amount, req.borrow_amount, req.is_bnb_supply)
         if not steps:
@@ -155,7 +321,7 @@ def run_lending_backtest(req: LendingRequest):
         # Downsample steps
         final_steps = downsample_steps(steps, target_count=500)
         
-        return BacktestResult(
+        result = BacktestResult(
             summary=BacktestSummary(
                 final_pnl_usd=pnl_usd,
                 roi_percentage=roi,
@@ -165,11 +331,16 @@ def run_lending_backtest(req: LendingRequest):
             ),
             steps=final_steps
         )
+        
+        if save:
+            await save_history(user["address"], "lending", req.dict(), result)
+            
+        return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/backtest/perp", response_model=BacktestResult)
-def run_perp_backtest(req: PerpRequest):
+async def run_perp_backtest(req: PerpRequest, user: dict = Depends(get_current_user), save: bool = True):
     try:
         steps = simulate_perp(req.initial_collateral, req.leverage, req.is_long)
         if not steps:
@@ -190,7 +361,7 @@ def run_perp_backtest(req: PerpRequest):
         # Downsample steps
         final_steps = downsample_steps(steps, target_count=500)
         
-        return BacktestResult(
+        result = BacktestResult(
             summary=BacktestSummary(
                 final_pnl_usd=pnl,
                 roi_percentage=roi,
@@ -200,11 +371,16 @@ def run_perp_backtest(req: PerpRequest):
             ),
             steps=final_steps
         )
+        
+        if save:
+            await save_history(user["address"], "perp", req.dict(), result)
+            
+        return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/backtest/clmm", response_model=BacktestResult)
-def run_clmm_backtest(req: CLMMRequest):
+async def run_clmm_backtest(req: CLMMRequest, user: dict = Depends(get_current_user), save: bool = True):
     try:
         steps = simulate_clmm(req.initial_token0, req.initial_token1, req.min_price, req.max_price)
         if not steps:
@@ -230,7 +406,7 @@ def run_clmm_backtest(req: CLMMRequest):
         # Downsample steps
         final_steps = downsample_steps(steps, target_count=500)
         
-        return BacktestResult(
+        result = BacktestResult(
             summary=BacktestSummary(
                 final_pnl_usd=pnl,
                 roi_percentage=roi,
@@ -240,26 +416,31 @@ def run_clmm_backtest(req: CLMMRequest):
             ),
             steps=final_steps
         )
+        
+        if save:
+            await save_history(user["address"], "clmm", req.dict(), result)
+            
+        return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/backtest/batch", response_model=BatchResponse)
-def run_batch_backtest(batch: BatchRequest):
+async def run_batch_backtest(batch: BatchRequest, user: dict = Depends(get_current_user), save: bool = True):
     results = []
     for item in batch.items:
         try:
             if item.type == "lending":
                 # Convert dict params to model
                 req = LendingRequest(**item.params)
-                res = run_lending_backtest(req)
+                res = await run_lending_backtest(req, user, save=False)
                 results.append(res)
             elif item.type == "perp":
                 req = PerpRequest(**item.params)
-                res = run_perp_backtest(req)
+                res = await run_perp_backtest(req, user, save=False)
                 results.append(res)
             elif item.type == "clmm":
                 req = CLMMRequest(**item.params)
-                res = run_clmm_backtest(req)
+                res = await run_clmm_backtest(req, user, save=False)
                 results.append(res)
             else:
                 # Add empty result or error placeholder
@@ -273,6 +454,28 @@ def run_batch_backtest(batch: BatchRequest):
             # We can't return None if model expects BacktestResult
             # We'll skip for now to keep it simple
             continue
+    
+    # Calculate aggregate summary for batch history
+    # Simple aggregation
+    total_pnl = sum(r.summary.final_pnl_usd for r in results)
+    total_equity = sum(r.summary.final_equity_usd for r in results)
+    # Weighted ROI? Or just simple PnL / Initial
+    # Initial = Final - PnL
+    total_initial = total_equity - total_pnl
+    roi = (total_pnl / total_initial * 100) if total_initial != 0 else 0
+    apy = sum(r.summary.apy_percentage for r in results) / len(results) if results else 0
+    
+    if save:
+        # Save as a single batch entry
+        summary = BacktestSummary(
+            final_pnl_usd=total_pnl,
+            roi_percentage=roi,
+            apy_percentage=apy,
+            final_equity_usd=total_equity,
+            steps_count=0 # Not relevant for aggregate
+        )
+        # Store the batch request params
+        await save_history(user["address"], "batch", batch.dict(), BacktestResult(summary=summary, steps=[]))
             
     return BatchResponse(results=results)
 

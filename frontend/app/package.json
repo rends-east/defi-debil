@@ -3,17 +3,21 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@web3modal/wagmi": "^3.5.0",
+    "axios": "^1.13.5",
+    "canvas-confetti": "^1.9.4",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.0.0",
+    "framer-motion": "^12.34.2",
+    "lucide-react": "^0.294.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.20.0",
     "react-scripts": "5.0.1",
-    "lucide-react": "^0.294.0",
-    "clsx": "^2.0.0",
+    "recharts": "^3.7.0",
     "tailwind-merge": "^2.1.0",
-    "class-variance-authority": "^0.7.0",
-    "@web3modal/wagmi": "^3.5.0",
-    "wagmi": "^1.4.0",
-    "viem": "^1.19.0"
+    "viem": "^1.19.0",
+    "wagmi": "^1.4.0"
   },
   "scripts": {
     "start": "react-scripts start",
@@ -38,5 +42,8 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "ajv": "^7.2.4"
   }
 }

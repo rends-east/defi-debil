@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, Wallet, Sparkles, Play, X, Lock, Unlock } from 'lucide-react';
+import { Plus, Wallet, Sparkles, Play, X, Lock, Unlock, Loader2 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -9,6 +9,8 @@ import { useAuth } from '../../context/AuthContext';
 import { LendingModule } from '../backtest/LendingModule';
 import { PerpsModule } from '../backtest/PerpsModule';
 import { ConcentratedLiquidityModule } from '../backtest/ConcentratedLiquidityModule';
+import { BacktestResults } from '../backtest/BacktestResults';
+import { runLendingBacktest, runPerpBacktest, runClmmBacktest, runBatchBacktest } from '../../lib/api';
 
 // Compute remaining balance for one asset after a list of strategies.
 // Handles both allocation-% strategies (lending/perps) and absolute-amount CL strategies.
@@ -252,7 +254,7 @@ const RemainingPanel = ({ portfolio, strategies, borrowedByAsset, strategyIndex 
       : `After strategies 1–${strategyIndex + 1}`;
 
   return (
-    <div className="w-44 shrink-0 sticky top-8 self-start">
+    <div className="w-full md:w-44 shrink-0 static md:sticky md:top-8 self-start">
       <Card className="shadow-sm border border-gray-200">
         <CardContent className="p-4 space-y-4">
           <div>
@@ -338,6 +340,7 @@ const StrategyCard = ({
   if (strategy.type === 'perps') {
     moduleProps.investedAmt = investedAmt ?? 0;
     moduleProps.investedAsset = investedAsset ?? 'USDC';
+    strategy.asset = 'USDC'
   }
   if (strategy.type === 'cl') {
     moduleProps.availableBNB = availableBNB ?? 0;
@@ -438,29 +441,123 @@ export const Workspace = ({
   onStrategyConfigChange,
   onToggleLock,
   onRunBacktest,
+  historyMode = false,
+  historyResult = null,
 }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, requireAuth } = useAuth();
+  const [results, setResults] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  if (!isAuthenticated) {
-    return (
-      <div className="flex-1 h-screen bg-gradient-to-br from-gray-50 to-blue-50 flex items-center justify-center p-8">
-        <Card className="max-w-md w-full shadow-xl">
-          <CardContent className="p-12 text-center">
-            <div className="w-20 h-20 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Wallet className="h-10 w-10 text-white" />
-            </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-3">Connect Your Wallet</h2>
-            <p className="text-gray-600 mb-6">
-              Connect your wallet to start backtesting DeFi strategies on BNB Chain
-            </p>
-            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-              <Sparkles className="h-4 w-4" />
-              <span>Powered by WalletConnect</span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
+  // If historyResult is provided (from App -> Workspace), set it as results
+  useEffect(() => {
+    if (historyResult) {
+      // Fix: Check if it's a batch response wrapper and extract results
+      if (historyResult.results && Array.isArray(historyResult.results)) {
+        setResults(historyResult.results);
+      } else {
+        setResults(historyResult);
+      }
+    } else if (!historyMode) {
+        setResults(null);
+    }
+  }, [historyResult, historyMode]);
+
+  const handleRunBacktest = async () => {
+    if (historyMode) return; // Disable running in history mode
+    // ... existing logic ...
+    // Wrap execution in requireAuth to ensure user is logged in before running
+    requireAuth(async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        // 1. Calculate effective balances and invested amounts for all strategies
+        // Reuse the same logic as render
+        
+        // Aggregate borrow amounts
+        const borrowedByAsset = strategies
+          .filter(s => s.type === 'lending' && s.config?.borrowAsset && s.config.borrowAsset !== 'none')
+          .reduce((acc, s) => {
+            const asset = s.config.borrowAsset;
+            const amount = parseFloat(s.config.borrowAmount) || 0;
+            acc[asset] = (acc[asset] || 0) + amount;
+            return acc;
+          }, {});
+
+        // Effective balance per asset = base portfolio + borrowed
+        const effectiveBalances = ['BNB', 'USDC'].reduce((acc, asset) => {
+          const base = parseFloat(portfolio.find(a => a.asset === asset)?.balance) || 0;
+          acc[asset] = base + (borrowedByAsset[asset] || 0);
+          return acc;
+        }, {});
+
+        // 2. Prepare request items
+        const requestItems = strategies.map((strategy, index) => {
+          const prior = strategies.slice(0, index);
+          const strategyEffectiveBalance = seqRemaining(effectiveBalances[strategy.asset] ?? 0, strategy.asset, prior);
+          const strategyInvestedAmt = strategyEffectiveBalance * (strategy.allocation / 100);
+
+          if (strategy.type === 'lending') {
+            return {
+              type: 'lending',
+              params: {
+                supply_amount: strategyInvestedAmt,
+                borrow_amount: parseFloat(strategy.config.borrowAmount) || 0,
+                is_bnb_supply: strategy.asset === 'BNB'
+              }
+            };
+          } else if (strategy.type === 'perps') {
+            return {
+              type: 'perp',
+              params: {
+                initial_collateral: strategyInvestedAmt,
+                leverage: parseFloat(strategy.config.leverage) || 1,
+                is_long: strategy.config.direction === 'long'
+              }
+            };
+          } else if (strategy.type === 'cl') {
+            return {
+              type: 'clmm',
+              params: {
+                initial_token0: parseFloat(strategy.config.amountBNB) || 0,
+                initial_token1: parseFloat(strategy.config.amountUSDC) || 0,
+                min_price: parseFloat(strategy.config.minPrice) || 0,
+                max_price: parseFloat(strategy.config.maxPrice) || 0
+              }
+            };
+          }
+          return null;
+        }).filter(Boolean);
+
+        // 3. Send request
+        let res;
+        if (requestItems.length === 1) {
+          const item = requestItems[0];
+          if (item.type === 'lending') res = await runLendingBacktest(item.params);
+          else if (item.type === 'perp') res = await runPerpBacktest(item.params);
+          else if (item.type === 'clmm') res = await runClmmBacktest(item.params);
+        } else if (requestItems.length > 1) {
+          const batchRes = await runBatchBacktest(requestItems);
+          res = batchRes.results; // Extract results array
+        }
+
+        setResults(res);
+      } catch (err) {
+        console.error(err);
+        setError(err.message || "Failed to run backtest");
+      } finally {
+        setLoading(false);
+      }
+    });
+  };
+
+  if (results) {
+    return <BacktestResults results={results} onBack={() => {
+        // If in history mode, onBack resets the view to empty workspace or keeps config?
+        // Let's say it keeps config but exits result view.
+        // But in history mode, we probably want to stay in read-only config view if we go back.
+        setResults(null);
+    }} />;
   }
 
   if (currentView === 'empty') {
@@ -508,12 +605,12 @@ export const Workspace = ({
   }, {});
 
   return (
-    <div className="flex-1 h-screen bg-gray-50 overflow-auto">
-      <div className="max-w-4xl mx-auto px-6 py-8">
+    <div className="flex-1 h-full bg-gray-50 overflow-auto">
+      <div className="max-w-4xl mx-auto px-4 md:px-6 py-6 md:py-8">
 
         {/* Portfolio Balance — same flex layout as strategy rows so widths align */}
-        <div className="flex gap-3 items-start mb-5">
-        <div className="flex-1 min-w-0">
+        <div className="flex flex-col md:flex-row gap-3 items-start mb-5">
+        <div className="flex-1 min-w-0 w-full">
         <Card className="shadow-md border border-gray-200">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
@@ -587,10 +684,10 @@ export const Workspace = ({
           </CardContent>
         </Card>
         </div>{/* close flex-1 */}
-        <div className="w-44 shrink-0" />{/* spacer matching RemainingPanel */}
+        <div className="w-44 shrink-0 hidden md:block" />{/* spacer matching RemainingPanel */}
 
         {/* Timeline origin — aligns with strategy timeline columns */}
-        <div className="w-14 shrink-0 self-stretch relative">
+        <div className="w-14 shrink-0 self-stretch relative hidden md:block">
           {/* Date label */}
           <span className="absolute right-4 top-1 text-[9px] font-bold text-gray-400 whitespace-nowrap leading-none">
             01.01.2024
@@ -630,8 +727,8 @@ export const Workspace = ({
             const isLast = index === strategies.length - 1;
 
             return (
-              <div key={strategy.id} className="flex gap-3 items-start">
-                <div className="flex-1 min-w-0">
+              <div key={strategy.id} className="flex flex-col md:flex-row gap-3 items-start">
+                <div className="flex-1 min-w-0 w-full">
                   <StrategyCard
                     strategy={strategy}
                     effectiveBalance={strategyEffectiveBalance}
@@ -646,15 +743,17 @@ export const Workspace = ({
                     onToggleLock={() => onToggleLock(strategy.id)}
                   />
                 </div>
-                <RemainingPanel
-                  portfolio={portfolio}
-                  strategies={strategiesUpTo}
-                  borrowedByAsset={borrowedUpTo}
-                  strategyIndex={index}
-                />
+                <div className="w-full md:w-44 shrink-0">
+                  <RemainingPanel
+                    portfolio={portfolio}
+                    strategies={strategiesUpTo}
+                    borrowedByAsset={borrowedUpTo}
+                    strategyIndex={index}
+                  />
+                </div>
 
                 {/* Timeline column */}
-                <div className="w-14 shrink-0 self-stretch relative">
+                <div className="w-14 shrink-0 self-stretch relative hidden md:block">
                   {/* Large ordinal number */}
                   <span className="absolute left-0 right-5 top-1 text-right text-4xl font-black text-gray-200 leading-none select-none">
                     {index + 1}
@@ -684,18 +783,32 @@ export const Workspace = ({
           </div>
 
           {/* Run Backtest */}
-          {strategies.length > 0 && (
-            <div className="max-w-2xl pb-6">
+          {strategies.length > 0 && !historyMode && (
+            <div className="max-w-2xl pb-6 space-y-2">
               <Button
                 variant="gradient"
                 size="lg"
-                className="w-full"
-                onClick={onRunBacktest}
-                disabled={portfolio.length === 0}
+                className="w-full relative"
+                onClick={handleRunBacktest}
+                disabled={portfolio.length === 0 || loading}
               >
-                <Play className="mr-2 h-5 w-5" />
-                Run Backtest
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    Simulating Strategy...
+                  </>
+                ) : (
+                  <>
+                    <Play className="mr-2 h-5 w-5" />
+                    Run Backtest
+                  </>
+                )}
               </Button>
+              {error && (
+                <p className="text-sm text-center text-red-500 bg-red-50 p-2 rounded-lg border border-red-100">
+                  {error}
+                </p>
+              )}
               {portfolio.length === 0 && (
                 <p className="text-xs text-center text-muted-foreground mt-2">
                   Add assets to your portfolio before running

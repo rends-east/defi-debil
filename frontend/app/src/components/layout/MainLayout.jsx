@@ -17,25 +17,32 @@ export const MainLayout = ({
   onStrategyConfigChange,
   onToggleLock,
   onRunBacktest,
+  historyMode,
+  historyResult,
+  onLoadHistory,
 }) => {
   return (
-    <div className="flex h-screen overflow-hidden">
-      <Sidebar onNewBacktest={onNewBacktest} />
-      <Workspace
-        currentView={currentView}
-        portfolio={portfolio}
-        strategies={strategies}
-        onAddAsset={onAddAsset}
-        onRemoveAsset={onRemoveAsset}
-        onAssetBalanceChange={onAssetBalanceChange}
-        onAddStrategy={onAddStrategy}
-        onRemoveStrategy={onRemoveStrategy}
-        onAllocationChange={onAllocationChange}
-        onStrategyAssetChange={onStrategyAssetChange}
-        onStrategyConfigChange={onStrategyConfigChange}
-        onToggleLock={onToggleLock}
-        onRunBacktest={onRunBacktest}
-      />
+    <div className="flex flex-col md:flex-row h-screen overflow-hidden">
+      <Sidebar onNewBacktest={onNewBacktest} onLoadHistory={onLoadHistory} />
+      <div className="flex-1 h-full overflow-hidden relative">
+        <Workspace
+          currentView={currentView}
+          portfolio={portfolio}
+          strategies={strategies}
+          historyMode={historyMode}
+          historyResult={historyResult}
+          onAddAsset={onAddAsset}
+          onRemoveAsset={onRemoveAsset}
+          onAssetBalanceChange={onAssetBalanceChange}
+          onAddStrategy={onAddStrategy}
+          onRemoveStrategy={onRemoveStrategy}
+          onAllocationChange={onAllocationChange}
+          onStrategyAssetChange={onStrategyAssetChange}
+          onStrategyConfigChange={onStrategyConfigChange}
+          onToggleLock={onToggleLock}
+          onRunBacktest={onRunBacktest}
+        />
+      </div>
     </div>
   );
 };

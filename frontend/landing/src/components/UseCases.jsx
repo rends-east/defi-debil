@@ -120,6 +120,7 @@ const UseCases = () => {
                 <a 
                   href={useCase.link || '#'}
                   target={useCase.link ? "_blank" : "_self"}
+                  rel={useCase.link ? "noreferrer" : undefined}
                   className="mt-6 inline-flex items-center text-sm font-semibold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
                 >
                   Learn more

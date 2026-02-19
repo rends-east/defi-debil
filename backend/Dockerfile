@@ -1,5 +1,5 @@
 # backend/Dockerfile
-FROM python:3.11-slim
+FROM python:3.13-slim
 
 # Install system dependencies required for OpenCV and other packages
 RUN apt-get update --fix-missing && apt-get install -y --no-install-recommends \

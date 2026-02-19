@@ -82,7 +82,8 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "https://debil.capital",
-        "https://www.debil.capital"
+        "https://www.debil.capital",
+        "https://app.debil.capital",
     ], 
     allow_credentials=True,
     allow_methods=["*"],

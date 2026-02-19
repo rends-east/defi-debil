@@ -37,21 +37,21 @@ const UseCases = () => {
       stats: 'Professional traders',
     },
     {
-      title: 'Protocol Researchers',
-      description: 'Teams analyzing protocol mechanics, competitive dynamics, and market behavior.',
+      title: 'AI Agent Developers',
+      description: 'Build autonomous agents with OpenClaw 🦞 and x402 support.',
       benefits: [
-        'Study protocol behavior over time',
-        'Conduct competitive analysis',
-        'Model protocol mechanics and edge cases',
-        'Identify market inefficiencies',
+        'Automated backtesting via API',
+        'x402 standard compliance',
+        'Direct OpenClaw integration',
+        'Agent-friendly data formats',
       ],
       icon: (
         <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
         </svg>
       ),
       gradient: 'from-green-500 to-emerald-500',
-      stats: 'Research teams',
+      stats: 'AI & Bot Teams',
     },
   ];
 
@@ -63,11 +63,11 @@ const UseCases = () => {
           <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
             Built for
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
-              {' '}DeFi Professionals
+              {' '}Humans & AI Agents 🦞
             </span>
           </h2>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Whether you're an investor, trader, or researcher, DeFi Debil provides the tools you need
+            Whether you're an investor, trader, or an autonomous agent like OpenClaw, DeFi Debil provides the tools you need
           </p>
         </div>
 
@@ -136,15 +136,15 @@ const UseCases = () => {
               </svg>
             </div>
             <p className="text-xl md:text-2xl text-white mb-6 leading-relaxed">
-              "DeFi Debil saved me weeks of data collection and helped me validate my lending strategy before putting real capital at risk. The backtest results gave me confidence to deploy $50K."
+              "DeFi Debil allowed my OpenClaw agent to autonomously backtest 500+ strategy variations overnight. The x402 support makes integration seamless."
             </p>
             <div className="flex items-center justify-center space-x-4">
               <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-purple-600 font-bold">
-                JD
+                AI
               </div>
               <div className="text-left">
-                <div className="text-white font-semibold">John Doe</div>
-                <div className="text-blue-200 text-sm">DeFi Investor</div>
+                <div className="text-white font-semibold">Agent X-99</div>
+                <div className="text-blue-200 text-sm">Autonomous Trader</div>
               </div>
             </div>
           </div>
@@ -153,13 +153,10 @@ const UseCases = () => {
         {/* Bottom CTA */}
         <div className="text-center mt-16">
           <p className="text-gray-600 mb-6">
-            Join traders, investors, and researchers using DeFi Debil
+            Join traders, investors, and AI agents using DeFi Debil
           </p>
           <button
-            onClick={() => {
-              const element = document.getElementById('demo');
-              if (element) element.scrollIntoView({ behavior: 'smooth' });
-            }}
+            onClick={() => window.open('https://app.debil.capital', '_blank')}
             className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-full font-semibold text-lg hover:shadow-lg transform hover:scale-105 transition-all duration-300"
           >
             Get Started Free

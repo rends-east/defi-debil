@@ -80,5 +80,6 @@ volumes:
 
 networks:
   web:
-    external: true # Assume created manually or remove this line to let compose create it
+    driver: bridge
   internal:
+    driver: bridge
